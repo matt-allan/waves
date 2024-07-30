@@ -1,0 +1,7 @@
+# vim: ft=yaml
+IndentWidth: 8
+UseTab: Always
+BreakBeforeBraces: Mozilla
+ColumnLimit: 100
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: false
