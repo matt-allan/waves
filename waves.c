@@ -3,10 +3,10 @@
 #include <asm/types.h>
 #include <gb/gb.h>
 #include <gb/hardware.h>
-#include <gbdk/console.h>
+// #include <gbdk/console.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
+// #include <stdio.h>
 
 uint8_t last_keys = 0;
 uint8_t keys = 0;
@@ -104,20 +104,6 @@ void tim(void)
 {
 	uint8_t env_val = envelope_tick(&PU1.envelope);
 	if (env_val != 0) {
-		switch (PU1.envelope.stage) {
-		case ENV_STAGE_ATTACK:
-			printf("A\n");
-			break;
-		case ENV_STAGE_DECAY:
-			printf("D\n");
-			break;
-		case ENV_STAGE_SUSTAIN:
-			printf("S\n");
-			break;
-		case ENV_STAGE_RELEASE:
-			printf("R\n");
-			break;
-		}
 		pu1_set_env(env_val);
 		pu1_trigger(710); // TODO: less hacky way to set this
 	}
@@ -138,20 +124,18 @@ void main(void)
 
 	PU1.envelope.attack = 7;
 	PU1.envelope.decay = 7;
-	PU1.envelope.sustain = 8;
+	PU1.envelope.sustain = 2;
 	PU1.envelope.release = 7;
 
 	while (1) {
 		update_keys();
 		if (key_ticked(J_A)) {
-			printf("ON\n");
 			CRITICAL
 			{
-				NR12_REG = envelope_on(&PU1.envelope, 13);
+				NR12_REG = envelope_on(&PU1.envelope, MAX_VOLUME);
 				pu1_trigger(period);
 			}
 		} else if (key_released(J_A)) {
-			printf("OFF\n");
 			CRITICAL
 			{
 				NR12_REG = envelope_off(&PU1.envelope);

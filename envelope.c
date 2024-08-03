@@ -1,6 +1,5 @@
 #include "envelope.h"
 #include <stdint.h>
-#include <stdio.h>
 
 inline uint8_t env_reg_val(uint8_t start_volume, enum env_dir dir, uint8_t pace)
 {
@@ -15,6 +14,10 @@ inline uint8_t envelope_attack(struct envelope *env, uint8_t volume)
 	env->direction = ENV_DIR_UP;
 	env->sweep_pace = env->sweep_counter = attack;
 	env->target_volume = volume;
+
+	if (!attack) {
+		return env_reg_val(volume, ENV_DIR_UP, attack);
+	}
 
 	return env_reg_val(0, ENV_DIR_UP, attack);
 }
@@ -84,11 +87,20 @@ uint8_t envelope_next(struct envelope *env)
 {
 	switch (env->stage) {
 	case ENV_STAGE_ATTACK:
-		return envelope_decay(env);
+		if (env->decay && env->sustain) {
+			return envelope_decay(env);
+		} 
+		// fallthrough
 	case ENV_STAGE_DECAY:
-		return envelope_sustain(env);
+		if (env->sustain) {
+			return envelope_sustain(env);
+		}
+		// fallthrough
 	case ENV_STAGE_SUSTAIN:
-		return envelope_release(env);
+		if (env->release) {
+			return envelope_release(env);
+		}
+		// fallthrough
 	case ENV_STAGE_RELEASE:
 		return envelope_end(env);
 	}
@@ -103,8 +115,6 @@ uint8_t envelope_tick(struct envelope *env)
 			} else {
 				env->volume--;
 			}
-
-			printf("V %d\n", env->volume);
 
 			if (env->volume == env->target_volume) {
 				return envelope_next(env);
