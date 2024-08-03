@@ -45,6 +45,8 @@ struct envelope
 {
 	/** The current volume. If 0 the envelope is off */
 	uint8_t volume;
+	/** Added to the volume each tick */
+	int8_t delta;
 	/** Countdown until the next stage (0 - (15*7)) */
 	uint8_t counter;
 	/** The current stage */

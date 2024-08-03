@@ -1,4 +1,5 @@
 #include "envelope.h"
+#include <stdio.h>
 
 inline uint8_t env_reg_val(uint8_t start_volume, enum env_dir dir, uint8_t pace)
 {
@@ -8,6 +9,7 @@ inline uint8_t env_reg_val(uint8_t start_volume, enum env_dir dir, uint8_t pace)
 uint8_t envelope_attack(struct envelope *env)
 {
 	env->volume = 0;
+	env->delta = 1;
 	env->stage = ENV_STAGE_ATTACK;
 	env->direction = ENV_DIR_UP;
 	// TODO is this actually based on the note on velocity?
@@ -18,24 +20,31 @@ uint8_t envelope_attack(struct envelope *env)
 
 uint8_t envelope_decay(struct envelope *env)
 {
+	env->delta = -1;
 	env->stage = ENV_STAGE_DECAY;
 	env->direction = ENV_DIR_DOWN;
-	env->counter = MAX_VOLUME * env->decay;
+	// Need to stop when we reach the intended volume
+	env->counter = (MAX_VOLUME - env->sustain) * env->decay;
 
 	return env_reg_val(MAX_VOLUME, ENV_DIR_DOWN, env->decay);
 }
 
 uint8_t envelope_sustain(struct envelope *env)
 {
+	printf("V: %d\n", env->volume);
+	env->delta = 0;
 	env->stage = ENV_STAGE_SUSTAIN;
 	env->direction = ENV_DIR_UP;
 	env->counter = 0;
 
+	// TODO: value should be relative to the attack velocity
 	return env_reg_val(env->sustain, ENV_DIR_UP, 0);
 }
 
 uint8_t envelope_release(struct envelope *env)
 {
+	printf("V: %d\n", env->volume);
+	env->delta = -1;
 	env->stage = ENV_STAGE_RELEASE;
 	env->direction = ENV_DIR_DOWN;
 	env->counter = env->volume * env->release;
@@ -56,10 +65,12 @@ uint8_t envelope_stop(struct envelope *env)
 
 uint8_t envelope_tick(struct envelope *env)
 {
+	// this is wrong, has to be based on the pace
+	env->volume = env->volume + env->delta;
+
 	if (env->counter > 0 && --env->counter == 0) {
 		switch (env->stage) {
 		case ENV_STAGE_ATTACK:		
-			// TODO: decay is not stopping (counter issue?)
 			return envelope_decay(env);
 		case ENV_STAGE_DECAY:
 			return envelope_sustain(env);
