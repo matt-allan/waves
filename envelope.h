@@ -9,16 +9,6 @@
  */
 static const uint8_t MAX_VOLUME = 15;
 
-/**
- * The direction of the envelope's sweep.
- */
-// enum env_sweep
-// {
-// 	ENV_SWEEP_NONE = 1 << 0,
-// 	ENV_SWEEP_UP = 1 << 1,
-// 	ENV_SWEEP_DOWN = 1 << 2,
-// };
-
 enum env_dir {
 	ENV_DIR_DOWN = 0,
 	ENV_DIR_UP = 1,

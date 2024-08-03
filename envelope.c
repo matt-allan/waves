@@ -1,5 +1,4 @@
 #include "envelope.h"
-#include <stdio.h>
 
 inline uint8_t env_reg_val(uint8_t start_volume, enum env_dir dir, uint8_t pace)
 {
@@ -70,20 +69,20 @@ uint8_t envelope_stop(struct envelope *env)
 uint8_t envelope_tick(struct envelope *env)
 {
 	// this is wrong, has to be based on the pace
-	env->volume = env->volume + env->delta;
+	// env->volume = env->volume + env->delta;
 
-	if (env->counter > 0 && --env->counter == 0) {
-		switch (env->stage) {
-		case ENV_STAGE_ATTACK:		
-			return envelope_decay(env);
-		case ENV_STAGE_DECAY:
-			return envelope_sustain(env);
-		case ENV_STAGE_SUSTAIN:
-			return envelope_release(env);
-		case ENV_STAGE_RELEASE:
-			return envelope_stop(env);
-		}
-	}
+	// if (env->counter > 0 && --env->counter == 0) {
+	// 	switch (env->stage) {
+	// 	case ENV_STAGE_ATTACK:		
+	// 		return envelope_decay(env);
+	// 	case ENV_STAGE_DECAY:
+	// 		return envelope_sustain(env);
+	// 	case ENV_STAGE_SUSTAIN:
+	// 		return envelope_release(env);
+	// 	case ENV_STAGE_RELEASE:
+	// 		return envelope_stop(env);
+	// 	}
+	// }
 
 	return 0;
 }

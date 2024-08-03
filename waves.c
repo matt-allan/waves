@@ -117,46 +117,39 @@ inline void apu_enable(void)
 
 // TODO: fold this in to the envelope stuff
 
-enum env_sweep_state {
-	ENV_SWEEP_NONE = 1 << 0,
-	ENV_SWEEP_UP = 1 << 1,
-	ENV_SWEEP_DOWN = 1 << 2,
-};
-
 uint8_t volume = 0;
 uint8_t target_volume = 0;
 uint8_t sweep_pace = 0;
+uint8_t sweep_dir = ENV_DIR_DOWN;
 uint8_t sweep_counter = 0;
-enum env_sweep_state sweep_state;
 
 void tim(void)
 {
-	switch (sweep_state) {
-	  case ENV_SWEEP_UP:
-	    if (--sweep_counter == 0) {
-	      if (++volume == target_volume) {
-	      	// TODO: would move to next stage
-	      	sweep_state = ENV_SWEEP_NONE;
-	      	sweep_counter = 0;
-	      }
-	      sweep_counter = sweep_pace;
-	      printf("V %d\n", volume);
-	    }   
-	    break;
-	  case ENV_SWEEP_DOWN:
-	    if (--sweep_counter == 0) {
-	      if (--volume == target_volume) {
-	      	// TODO: would move to next stage
-	      	sweep_state = ENV_SWEEP_NONE;
-	      	sweep_counter = 0;
-	      }
-	      sweep_counter = sweep_pace; 
-	      printf("V %d\n", volume);
-	    }   
-	  	break;
-	  case ENV_SWEEP_NONE:
-	  	// ignore
-	  	break;
+	if (sweep_counter != 0) {
+		switch (sweep_dir) {
+		case ENV_DIR_UP:
+			if (--sweep_counter == 0) {
+				if (++volume == target_volume) {
+					// TODO: would move to next stage
+					sweep_counter = 0;
+				} else {
+					sweep_counter = sweep_pace;
+				}
+				printf("V %d\n", volume);
+			}
+			break;
+		case ENV_DIR_DOWN:
+			if (--sweep_counter == 0) {
+				if (--volume == target_volume) {
+					// TODO: would move to next stage
+					sweep_counter = 0;
+				} else {
+					sweep_counter = sweep_pace;
+				}
+				printf("V %d\n", volume);
+			}
+			break;
+		}
 	}
 }
 
@@ -186,27 +179,26 @@ void main(void)
 
 	uint16_t period = 710;
 
-	while (1) {	
+	while (1) {
 		update_keys();
 		if (key_ticked(J_A)) {
 			printf("ON\n");
 			CRITICAL
 			{
-				sweep_state = ENV_SWEEP_UP;
+				sweep_dir = ENV_DIR_UP;
 				sweep_pace = sweep_counter = 7;
 				target_volume = MAX_VOLUME;
-				pu1_set_env(0, ENV_DIR_UP, sweep_pace);
-
+				pu1_set_env(0, sweep_dir, sweep_pace);
 				pu1_trigger(period);
 			}
 		} else if (key_released(J_A)) {
 			printf("OFF\n");
 			CRITICAL
 			{
-				sweep_state = ENV_SWEEP_DOWN;
+				sweep_dir = ENV_DIR_DOWN;
 				sweep_pace = sweep_counter = 7;
 				target_volume = 0;
-				pu1_set_env(volume, ENV_DIR_DOWN, sweep_pace);
+				pu1_set_env(volume, sweep_dir, sweep_pace);
 				pu1_trigger(period);
 			}
 		}
