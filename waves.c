@@ -8,54 +8,28 @@
 #include <stdint.h>
 #include <stdio.h>
 
-uint8_t PREV_KEYS = 0;
-uint8_t KEYS = 0;
-
-struct pulse1 PU1 = {
-    0, 0, DUTY_CYCLE_12_5, {0, 0, 0}, {0, 0, 0, ENV_STAGE_ATTACK, ENV_DIR_UP, 0, 0, 0, 0}};
+uint8_t last_keys = 0;
+uint8_t keys = 0;
 
 inline void update_keys(void)
 {
-	PREV_KEYS = KEYS;
-	KEYS = joypad();
-}
-
-void tim(void)
-{
-	uint8_t reg = envelope_tick(&PU1.envelope);
-	if (reg != 0) {
-		printf(">\n");
-		NR12_REG = reg;
-		switch (PU1.envelope.stage) {
-		case ENV_STAGE_ATTACK:
-			printf("A\n");
-			break;
-		case ENV_STAGE_DECAY:
-			printf("D\n");
-			break;
-		case ENV_STAGE_SUSTAIN:
-			printf("S\n");
-			break;
-		case ENV_STAGE_RELEASE:
-			printf("R\n");
-			break;
-		}
-	}
+	last_keys = keys;
+	keys = joypad();
 }
 
 inline bool key_pressed(uint8_t k)
 {
-	return KEYS & (k);
+	return keys & (k);
 }
 
 inline bool key_ticked(uint8_t k)
 {
-	return (KEYS & (k)) && !(PREV_KEYS & (k));
+	return (keys & (k)) && !(last_keys & (k));
 }
 
 inline bool key_released(uint8_t k)
 {
-	return !(KEYS & (k)) && (PREV_KEYS & (k));
+	return !(keys & (k)) && (last_keys & (k));
 }
 
 inline void timer_enable(void)
@@ -141,45 +115,62 @@ inline void apu_enable(void)
 // 	NR14_REG = 0x80;
 // }
 
-inline void pu1_trigger(void)
+// TODO: fold this in to the envelope stuff
+
+enum env_sweep_state {
+	ENV_SWEEP_NONE = 1 << 0,
+	ENV_SWEEP_UP = 1 << 1,
+	ENV_SWEEP_DOWN = 1 << 2,
+};
+
+uint8_t volume = 0;
+uint8_t target_volume = 0;
+uint8_t sweep_pace = 0;
+uint8_t sweep_counter = 0;
+enum env_sweep_state sweep_state;
+
+void tim(void)
 {
-	uint16_t period = PU1.period;
-	uint8_t len_en = PU1.length != 0;
+	switch (sweep_state) {
+	  case ENV_SWEEP_UP:
+	    if (--sweep_counter == 0) {
+	      if (++volume == target_volume) {
+	      	// TODO: would move to next stage
+	      	sweep_state = ENV_SWEEP_NONE;
+	      	sweep_counter = 0;
+	      }
+	      sweep_counter = sweep_pace;
+	      printf("V %d\n", volume);
+	    }   
+	    break;
+	  case ENV_SWEEP_DOWN:
+	    if (--sweep_counter == 0) {
+	      if (--volume == target_volume) {
+	      	// TODO: would move to next stage
+	      	sweep_state = ENV_SWEEP_NONE;
+	      	sweep_counter = 0;
+	      }
+	      sweep_counter = sweep_pace; 
+	      printf("V %d\n", volume);
+	    }   
+	  	break;
+	  case ENV_SWEEP_NONE:
+	  	// ignore
+	  	break;
+	}
+}
+
+inline void pu1_set_env(uint8_t start_volume, enum env_dir dir, uint8_t pace)
+{
+	NR12_REG = (start_volume << 4) | (dir << 3) | (pace & 0x7);
+}
+
+inline void pu1_trigger(uint16_t period)
+{
+	uint8_t len_en = 0;
 
 	NR13_REG = period & 0xFF;
 	NR14_REG = (1 << 7) | (len_en << 6) | (period >> 8);
-}
-
-// inline void pu1_set_env(uint8_t start_volume, enum env_dir dir, uint8_t pace)
-// {
-// 	NR12_REG = (start_volume << 4) | (dir << 3) | (pace & 0x7);
-// }
-
-/**
- * Turn on the channel, starting the attack phase of the volume envelope.
- */
-void pu1_on(uint16_t period)
-{
-
-	CRITICAL
-	{
-		PU1.period = period;
-		NR12_REG = envelope_attack(&PU1.envelope);
-		pu1_trigger();
-	}
-}
-
-/**
- * Turn off the channel, immediately advancing to the release phase of the
- * volume envelope.
- */
-void pu1_off(void)
-{
-	CRITICAL
-	{
-		NR12_REG = envelope_release(&PU1.envelope);
-		pu1_trigger();
-	}
 }
 
 void main(void)
@@ -193,19 +184,31 @@ void main(void)
 	set_interrupts(VBL_IFLAG | TIM_IFLAG);
 	enable_interrupts();
 
-	// PU1.envelope.attack = 7;
-	// PU1.envelope.decay = 7;
-	// PU1.envelope.sustain = 6;
-	// PU1.envelope.release = 7;
+	uint16_t period = 710;
 
-	while (1) {
+	while (1) {	
 		update_keys();
 		if (key_ticked(J_A)) {
 			printf("ON\n");
-			pu1_on(710);
+			CRITICAL
+			{
+				sweep_state = ENV_SWEEP_UP;
+				sweep_pace = sweep_counter = 7;
+				target_volume = MAX_VOLUME;
+				pu1_set_env(0, ENV_DIR_UP, sweep_pace);
+
+				pu1_trigger(period);
+			}
 		} else if (key_released(J_A)) {
 			printf("OFF\n");
-			pu1_off();
+			CRITICAL
+			{
+				sweep_state = ENV_SWEEP_DOWN;
+				sweep_pace = sweep_counter = 7;
+				target_volume = 0;
+				pu1_set_env(volume, ENV_DIR_DOWN, sweep_pace);
+				pu1_trigger(period);
+			}
 		}
 
 		__asm__("halt");

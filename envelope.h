@@ -10,10 +10,16 @@
 static const uint8_t MAX_VOLUME = 15;
 
 /**
- * The register value for an envelope's direction.
+ * The direction of the envelope's sweep.
  */
-enum env_dir
-{
+// enum env_sweep
+// {
+// 	ENV_SWEEP_NONE = 1 << 0,
+// 	ENV_SWEEP_UP = 1 << 1,
+// 	ENV_SWEEP_DOWN = 1 << 2,
+// };
+
+enum env_dir {
 	ENV_DIR_DOWN = 0,
 	ENV_DIR_UP = 1,
 };
@@ -45,20 +51,22 @@ struct envelope
 {
 	/** The current volume. If 0 the envelope is off */
 	uint8_t volume;
-	/** Added to the volume each tick */
-	int8_t delta;
-	/** Countdown until the next stage (0 - (15*7)) */
-	uint8_t counter;
-	/** The current stage */
+	/** The volume we are sweeping towards. */
+	uint8_t target_volume;
+	/** The current sweep pace. */
+	uint8_t sweep_pace;	
+	/** Counts down until the next volume change **/
+	uint8_t sweep_counter;
+	/** The current envelope stage */
 	enum env_stage stage;
-	/** The current direction */
-	enum env_dir direction;
+	/** The current sweep direction */
+	// enum env_sweep sweep;
 
 	/** Attack length sweep pace (1-7) */
 	uint8_t attack;
 	/** Decay sweep pace (1-7) */
 	uint8_t decay;
-	/** Sustain volume (1-15) */
+	/** Sustain volume, relative to the attack volume */
 	uint8_t sustain;
 	/** Release pace (1-7) */
 	uint8_t release;
