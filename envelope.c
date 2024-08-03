@@ -1,88 +1,117 @@
 #include "envelope.h"
+#include <stdint.h>
+#include <stdio.h>
 
 inline uint8_t env_reg_val(uint8_t start_volume, enum env_dir dir, uint8_t pace)
 {
 	return (start_volume << 4) | (dir << 3) | (pace & 0x7);
 }
 
-uint8_t envelope_attack(struct envelope *env)
+inline uint8_t envelope_attack(struct envelope *env, uint8_t volume)
 {
-	// env->volume = 0;
-	// env->delta = 1;
-	// env->stage = ENV_STAGE_ATTACK;
-	// env->direction = ENV_DIR_UP;
-	// // TODO is this actually based on the note on velocity?
-	// env->counter = MAX_VOLUME * env->attack;
+	uint8_t attack = env->attack;
 
-	// return env_reg_val(0, ENV_DIR_UP, env->attack);
-	return 0x00;
+	env->stage = ENV_STAGE_ATTACK;
+	env->direction = ENV_DIR_UP;
+	env->sweep_pace = env->sweep_counter = attack;
+	env->target_volume = volume;
+
+	return env_reg_val(0, ENV_DIR_UP, attack);
 }
 
-uint8_t envelope_decay(struct envelope *env)
+inline uint8_t envelope_decay(struct envelope *env)
 {
-	// env->delta = -1;
-	// env->stage = ENV_STAGE_DECAY;
-	// env->direction = ENV_DIR_DOWN;
-	// // Need to stop when we reach the intended volume
-	// env->counter = (MAX_VOLUME - env->sustain) * env->decay;
+	uint8_t decay = env->decay;
 
-	// return env_reg_val(MAX_VOLUME, ENV_DIR_DOWN, env->decay);
-	return 0x00;
+	env->stage = ENV_STAGE_DECAY;
+	env->direction = ENV_DIR_DOWN;
+	env->sweep_pace = env->sweep_counter = decay;
+	env->target_volume = env->volume - env->sustain;
+
+	return env_reg_val(env->volume, ENV_DIR_DOWN, decay);
 }
 
-uint8_t envelope_sustain(struct envelope *env)
+inline uint8_t envelope_sustain(struct envelope *env)
 {
-	// printf("V: %d\n", env->volume);
-	// env->delta = 0;
-	// env->stage = ENV_STAGE_SUSTAIN;
-	// env->direction = ENV_DIR_UP;
-	// env->counter = 0;
+	env->stage = ENV_STAGE_SUSTAIN;
+	env->direction = ENV_DIR_UP; // needs to be up to stay on
+	env->sweep_pace = env->sweep_counter = 0;
+	// target_volume is already set
 
-	// // TODO: value should be relative to the attack velocity
-	// return env_reg_val(env->sustain, ENV_DIR_UP, 0);
-	return 0x00;
+	return env_reg_val(env->volume, ENV_DIR_UP, 0);
 }
 
-uint8_t envelope_release(struct envelope *env)
+inline uint8_t envelope_release(struct envelope *env)
 {
-	// printf("V: %d\n", env->volume);
-	// env->delta = -1;
-	// env->stage = ENV_STAGE_RELEASE;
-	// env->direction = ENV_DIR_DOWN;
-	// env->counter = env->volume * env->release;
+	uint8_t release = env->release;
 
-	// return env_reg_val(env->volume, ENV_DIR_DOWN, env->release);
-	return 0x00;
+	env->stage = ENV_STAGE_RELEASE;
+	env->direction = ENV_DIR_DOWN;
+	env->sweep_pace = env->sweep_counter = release;
+	env->target_volume = 0;
+
+	return env_reg_val(env->volume, ENV_DIR_DOWN, release);
 }
 
-uint8_t envelope_stop(struct envelope *env)
+inline uint8_t envelope_end(struct envelope *env)
 {
-	// Reset to the initial state
-	// env->stage = ENV_STAGE_ATTACK;
-	// env->direction = ENV_DIR_UP;
-	// env->counter = 0;
-	// env->volume = 0;
+	env->volume = 0;
+	env->sweep_counter = 0;
 
 	return 0x08;
 }
 
+uint8_t envelope_on(struct envelope *env, uint8_t volume)
+{
+	return envelope_attack(env, volume);
+}
+
+uint8_t envelope_off(struct envelope *env)
+{
+	if (env->stage == ENV_STAGE_RELEASE) {
+		return 0;
+	} else {
+		return envelope_release(env);
+	}
+}
+
+uint8_t envelope_kill(struct envelope *env)
+{
+	return envelope_end(env);
+}
+
+uint8_t envelope_next(struct envelope *env)
+{
+	switch (env->stage) {
+	case ENV_STAGE_ATTACK:
+		return envelope_decay(env);
+	case ENV_STAGE_DECAY:
+		return envelope_sustain(env);
+	case ENV_STAGE_SUSTAIN:
+		return envelope_release(env);
+	case ENV_STAGE_RELEASE:
+		return envelope_end(env);
+	}
+}
+
 uint8_t envelope_tick(struct envelope *env)
 {
-	// this is wrong, has to be based on the pace
-	// env->volume = env->volume + env->delta;
+	if (env->sweep_counter != 0) {
+		if (--env->sweep_counter == 0) {
+			if (env->direction == ENV_DIR_UP) {
+				env->volume++;
+			} else {
+				env->volume--;
+			}
 
-	// if (env->counter > 0 && --env->counter == 0) {
-	// 	switch (env->stage) {
-	// 	case ENV_STAGE_ATTACK:		
-	// 		return envelope_decay(env);
-	// 	case ENV_STAGE_DECAY:
-	// 		return envelope_sustain(env);
-	// 	case ENV_STAGE_SUSTAIN:
-	// 		return envelope_release(env);
-	// 	case ENV_STAGE_RELEASE:
-	// 		return envelope_stop(env);
-	// 	}
-	// }
+			printf("V %d\n", env->volume);
 
+			if (env->volume == env->target_volume) {
+				return envelope_next(env);
+			} else {
+				env->sweep_counter = env->sweep_pace;
+			}
+		}
+	}
 	return 0;
 }

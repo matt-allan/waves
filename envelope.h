@@ -38,7 +38,15 @@ static const uint8_t NUM_ENV_STAGES = 4;
  * written 4 times in succession at the exact time.
  **/
 struct envelope
-{
+{	
+	/** Attack length sweep pace (1-7) */
+	uint8_t attack;
+	/** Decay sweep pace (1-7) */
+	uint8_t decay;
+	/** Sustain volume difference from attack volume */
+	uint8_t sustain;
+	/** Release pace (1-7) */
+	uint8_t release;
 	/** The current volume. If 0 the envelope is off */
 	uint8_t volume;
 	/** The volume we are sweeping towards. */
@@ -50,42 +58,23 @@ struct envelope
 	/** The current envelope stage */
 	enum env_stage stage;
 	/** The current sweep direction */
-	// enum env_sweep sweep;
-
-	/** Attack length sweep pace (1-7) */
-	uint8_t attack;
-	/** Decay sweep pace (1-7) */
-	uint8_t decay;
-	/** Sustain volume, relative to the attack volume */
-	uint8_t sustain;
-	/** Release pace (1-7) */
-	uint8_t release;
+	enum env_dir direction;
 };
 
 /**
- * Start the attack stage.
+ * Turn on the envelope, starting the attack stage.
  */
-uint8_t envelope_attack(struct envelope *env);
+uint8_t envelope_on(struct envelope *env, uint8_t volume);
 
 /**
- * Start the decay stage.
+ * Turn off the envelope, moving to the release phase.
  */
-uint8_t envelope_decay(struct envelope *env);
+uint8_t envelope_off(struct envelope *env);
 
 /**
- * Start the sustain stage.
+ * Immediately stop the envelope.
  */
-uint8_t envelope_sustain(struct envelope *env);
-
-/**
- * Start the release stage.
- */
-uint8_t envelope_release(struct envelope *env);
-
-/**
- * Immediately stop the envelope without waiting for release.
- */
-uint8_t envelope_stop(struct envelope *env);
+uint8_t envelope_kill(struct envelope *env);
 
 /**
  * Advance the envelope one tick.

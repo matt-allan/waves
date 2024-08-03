@@ -11,6 +11,10 @@
 uint8_t last_keys = 0;
 uint8_t keys = 0;
 
+struct pulse1 PU1 = {
+	.envelope = {0}
+};
+
 inline void update_keys(void)
 {
 	last_keys = keys;
@@ -83,79 +87,9 @@ inline void apu_enable(void)
 // 	NR11_REG = counter | (NR11_REG & 0xC0);
 // }
 
-// // TODO: this is envelope initial volume, not overall volume
-// inline void pu1_volume_set(uint8_t volume)
-// {
-// 	assert(volume <= 15);
-// 	NR12_REG = (volume << 4) | (NR12_REG & 0xF);
-// }
-
-// inline void pu1_env_dir_set(enum env_dir dir)
-// {
-// 	NR12_REG = (dir << 3) | (NR12_REG & 0xF7);
-// }
-
-// inline void pu1_env_sweep_pace_set(uint8_t pace)
-// {
-// 	assert(pace <= 7);
-// 	NR12_REG = pace | (NR12_REG & 0xF8);
-// }
-
-// inline void pu1_play(uint16_t period)
-// {
-// 	assert(period <= 2047);
-// 	NR13_REG = period & 0xFF;
-// 	NR14_REG = (1 << 7) | (pu1_length_enabled << 6) | (period >> 8);
-// }
-
-// inline void pu1_stop(void)
-// {
-// 	NR12_REG = 0x08;
-// 	NR13_REG = 0x00;
-// 	NR14_REG = 0x80;
-// }
-
-// TODO: fold this in to the envelope stuff
-
-uint8_t volume = 0;
-uint8_t target_volume = 0;
-uint8_t sweep_pace = 0;
-uint8_t sweep_dir = ENV_DIR_DOWN;
-uint8_t sweep_counter = 0;
-
-void tim(void)
+inline void pu1_set_env(uint8_t env_val)
 {
-	if (sweep_counter != 0) {
-		switch (sweep_dir) {
-		case ENV_DIR_UP:
-			if (--sweep_counter == 0) {
-				if (++volume == target_volume) {
-					// TODO: would move to next stage
-					sweep_counter = 0;
-				} else {
-					sweep_counter = sweep_pace;
-				}
-				printf("V %d\n", volume);
-			}
-			break;
-		case ENV_DIR_DOWN:
-			if (--sweep_counter == 0) {
-				if (--volume == target_volume) {
-					// TODO: would move to next stage
-					sweep_counter = 0;
-				} else {
-					sweep_counter = sweep_pace;
-				}
-				printf("V %d\n", volume);
-			}
-			break;
-		}
-	}
-}
-
-inline void pu1_set_env(uint8_t start_volume, enum env_dir dir, uint8_t pace)
-{
-	NR12_REG = (start_volume << 4) | (dir << 3) | (pace & 0x7);
+	NR12_REG = env_val;
 }
 
 inline void pu1_trigger(uint16_t period)
@@ -164,6 +98,29 @@ inline void pu1_trigger(uint16_t period)
 
 	NR13_REG = period & 0xFF;
 	NR14_REG = (1 << 7) | (len_en << 6) | (period >> 8);
+}
+
+void tim(void)
+{
+	uint8_t env_val = envelope_tick(&PU1.envelope);
+	if (env_val != 0) {
+		switch (PU1.envelope.stage) {
+		case ENV_STAGE_ATTACK:
+			printf("A\n");
+			break;
+		case ENV_STAGE_DECAY:
+			printf("D\n");
+			break;
+		case ENV_STAGE_SUSTAIN:
+			printf("S\n");
+			break;
+		case ENV_STAGE_RELEASE:
+			printf("R\n");
+			break;
+		}
+		pu1_set_env(env_val);
+		pu1_trigger(710); // TODO: less hacky way to set this
+	}
 }
 
 void main(void)
@@ -179,26 +136,25 @@ void main(void)
 
 	uint16_t period = 710;
 
+	PU1.envelope.attack = 7;
+	PU1.envelope.decay = 7;
+	PU1.envelope.sustain = 8;
+	PU1.envelope.release = 7;
+
 	while (1) {
 		update_keys();
 		if (key_ticked(J_A)) {
 			printf("ON\n");
 			CRITICAL
 			{
-				sweep_dir = ENV_DIR_UP;
-				sweep_pace = sweep_counter = 7;
-				target_volume = MAX_VOLUME;
-				pu1_set_env(0, sweep_dir, sweep_pace);
+				NR12_REG = envelope_on(&PU1.envelope, 13);
 				pu1_trigger(period);
 			}
 		} else if (key_released(J_A)) {
 			printf("OFF\n");
 			CRITICAL
 			{
-				sweep_dir = ENV_DIR_DOWN;
-				sweep_pace = sweep_counter = 7;
-				target_volume = 0;
-				pu1_set_env(volume, sweep_dir, sweep_pace);
+				NR12_REG = envelope_off(&PU1.envelope);
 				pu1_trigger(period);
 			}
 		}
