@@ -14,11 +14,18 @@ GAME := waves
 
 all: $(GAME).gb
 
-$(GAME).gb: main.o
+$(GAME).gb: waves.o envelope.o
 	$(CC) $(CFLAGS) -o $@ $^
 	$(ROMUSAGE) $(GAME).map
 
+waves.o: waves.c waves.h envelope.h
+
+envelope.o: envelope.c envelope.h
+
 %.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.s
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY: clean

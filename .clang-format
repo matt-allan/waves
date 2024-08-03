@@ -1,7 +1,8 @@
 # vim: ft=yaml
 IndentWidth: 8
 UseTab: Always
-BreakBeforeBraces: Mozilla
+BreakBeforeBraces: Linux
 ColumnLimit: 100
 AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
 IndentCaseLabels: false

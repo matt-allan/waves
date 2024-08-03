@@ -1,7 +1,8 @@
 # vim: ft=yaml
 CompileFlags:
-  Add: [-std=c11, -D__PORT_sm83, -D__TARGET_gb, -isystem, /opt/gbdk/include]
+  Add: [-xc, -std=c11, -D__PORT_sm83, -D__TARGET_gb, -isystem, /opt/gbdk/include]
 
 Diagnostics:
   Suppress:
     - main_returns_nonint
+    - asm_qualifier_ignored
