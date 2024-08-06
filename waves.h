@@ -44,4 +44,10 @@ struct pulse1 {
 	struct envelope envelope;
 };
 
+struct pulse2 {
+	uint16_t period;
+	enum duty_cycle duty_cycle;
+	struct envelope envelope;
+};
+
 #endif // WAVES_WAVES_H

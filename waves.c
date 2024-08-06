@@ -15,6 +15,10 @@ struct pulse1 PU1 = {
 	.envelope = {0}
 };
 
+struct pulse2 PU2 = {
+	.envelope = {0}
+};
+
 inline void update_keys(void)
 {
 	last_keys = keys;
@@ -49,7 +53,7 @@ inline void apu_enable(void)
 	NR50_REG = 0x77; // max volume L&R
 }
 
-inline void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
+void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 {
 	struct sweep* sweep = &PU1.sweep;
 	sweep->pace = pace;
@@ -60,13 +64,13 @@ inline void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 }
 
 
-inline void pu1_set_duty_cycle(enum duty_cycle duty)
+void pu1_set_duty_cycle(enum duty_cycle duty)
 {
 	PU1.duty_cycle = duty;
 	NR11_REG = (duty << 6) | (NR11_REG & 0x1F);
 }
 
-inline void pu1_set_length(uint8_t len)
+void pu1_set_length(uint8_t len)
 {
 	PU1.envelope.length = len;
 	NR11_REG = len | (NR11_REG & 0xC0);
@@ -77,7 +81,7 @@ inline void pu1_set_env(uint8_t env_val)
 	NR12_REG = env_val;
 }
 
-inline void pu1_trigger()
+void pu1_trigger()
 {
 	uint8_t len_en = PU1.envelope.length != 0;
 	uint16_t period = PU1.period;
@@ -86,12 +90,44 @@ inline void pu1_trigger()
 	NR14_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
+void pu2_set_duty_cycle(enum duty_cycle duty)
+{
+	PU2.duty_cycle = duty;
+	NR21_REG = (duty << 6) | (NR11_REG & 0x1F);
+}
+
+void pu2_set_length(uint8_t len)
+{
+	PU2.envelope.length = len;
+	NR21_REG = len | (NR21_REG & 0xC0);
+}
+
+inline void pu2_set_env(uint8_t env_val)
+{
+	NR22_REG = env_val;
+}
+
+void pu2_trigger()
+{
+	uint8_t len_en = PU2.envelope.length != 0;
+	uint16_t period = PU2.period;
+
+	NR13_REG = period & 0xFF;
+	NR14_REG = (1 << 7) | (len_en << 6) | (period >> 8);
+}
+
 void tim(void)
 {
-	uint8_t env_val = envelope_tick(&PU1.envelope);
-	if (env_val != 0) {
+	uint8_t env_val;
+
+	if ((env_val = envelope_tick(&PU1.envelope))) {
 		pu1_set_env(env_val);
 		pu1_trigger();
+	}
+
+	if ((env_val = envelope_tick(&PU2.envelope))) {
+		pu2_set_env(env_val);
+		pu2_trigger();
 	}
 }
 
