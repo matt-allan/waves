@@ -38,7 +38,6 @@ struct sweep {
 };
 
 struct pulse1 {
-	uint8_t length;
 	uint16_t period;
 	enum duty_cycle duty_cycle;
 	struct sweep sweep;

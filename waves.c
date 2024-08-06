@@ -51,10 +51,10 @@ inline void apu_enable(void)
 
 inline void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 {
-	struct sweep sweep = PU1.sweep;
-	sweep.pace = pace;
-	sweep.dir = dir;
-	sweep.step = step;
+	struct sweep* sweep = &PU1.sweep;
+	sweep->pace = pace;
+	sweep->dir = dir;
+	sweep->step = step;
 
 	NR10_REG =  (pace << 4) | (dir << 3) | step;
 }
@@ -68,7 +68,7 @@ inline void pu1_set_duty_cycle(enum duty_cycle duty)
 
 inline void pu1_set_length(uint8_t len)
 {
-	PU1.length = len;
+	PU1.envelope.length = len;
 	NR11_REG = len | (NR11_REG & 0xC0);
 }
 
@@ -79,7 +79,7 @@ inline void pu1_set_env(uint8_t env_val)
 
 inline void pu1_trigger()
 {
-	uint8_t len_en = PU1.length != 0;
+	uint8_t len_en = PU1.envelope.length != 0;
 	uint16_t period = PU1.period;
 
 	NR13_REG = period & 0xFF;

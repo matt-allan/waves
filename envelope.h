@@ -49,12 +49,16 @@ struct envelope
 	uint8_t release;
 	/** The current volume. If 0 the envelope is off */
 	uint8_t volume;
+	/** The length of the envelope if fixed (0-63) */
+	uint8_t length;
+	/** Counts down until stop */
+	uint8_t length_timer;
 	/** The volume we are sweeping towards. */
 	uint8_t target_volume;
 	/** The current sweep pace. */
 	uint8_t sweep_pace;	
 	/** Counts down until the next volume change **/
-	uint8_t sweep_counter;
+	uint8_t sweep_timer;
 	/** The current envelope stage */
 	enum env_stage stage;
 	/** The current sweep direction */
