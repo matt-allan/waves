@@ -55,6 +55,12 @@ inline void apu_enable(void)
 	NR50_REG = 0x77; // max volume L&R
 }
 
+
+inline uint8_t env_reg_val(struct envelope *env)
+{
+	return (env->start_volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
+}
+
 void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 {
 	struct sweep *sweep = &PU1.sweep;
@@ -77,9 +83,9 @@ void pu1_set_length(uint8_t len)
 	NR11_REG = len | (NR11_REG & 0xC0);
 }
 
-inline void pu1_set_env(uint8_t env_val)
+inline void pu1_update_env(void)
 {
-	NR12_REG = env_val;
+	NR12_REG = env_reg_val(&PU1.envelope);
 }
 
 void pu1_trigger(void)
@@ -103,9 +109,9 @@ void pu2_set_length(uint8_t len)
 	NR21_REG = len | (NR21_REG & 0xC0);
 }
 
-inline void pu2_set_env(uint8_t env_val)
+inline void pu2_update_env(void)
 {
-	NR22_REG = env_val;
+	NR22_REG = env_reg_val(&PU2.envelope);
 }
 
 void pu2_trigger(void)
@@ -154,13 +160,13 @@ void tim(void)
 {
 	uint8_t env_val;
 
-	if ((env_val = envelope_tick(&PU1.envelope))) {
-		pu1_set_env(env_val);
+	if (envelope_tick(&PU1.envelope)) {
+		pu1_update_env();
 		pu1_trigger();
 	}
 
-	if ((env_val = envelope_tick(&PU2.envelope))) {
-		pu2_set_env(env_val);
+	if (envelope_tick(&PU2.envelope)) {
+		pu2_update_env();
 		pu2_trigger();
 	}
 }
@@ -201,31 +207,33 @@ void main(void)
 		if (key_ticked(J_A)) {
 			CRITICAL
 			{
-				// pu1_set_env(
-				//     envelope_on(&PU1.envelope, MAX_VOLUME));
-				// pu2_set_env(
-				//     envelope_on(&PU2.envelope, MAX_VOLUME));
-				// pu1_trigger();
+				envelope_on(&PU1.envelope, MAX_VOLUME);
+				pu1_update_env();
+				// envelope_on(&PU2.envelope, MAX_VOLUME);
+				// pu2_set_env();
+				pu1_trigger();
 				// pu2_trigger();
 
-				wav_set_volume(1);
+				// wav_set_volume(1);
 
-				wav_set_wave_data(saw_wave_half);
-				wav_trigger();
-				delay(800);
-				wav_set_wave_data(saw_wave);
-				wav_trigger();
+				// wav_set_wave_data(saw_wave_half);
+				// wav_trigger();
+				// delay(800);
+				// wav_set_wave_data(saw_wave);
+				// wav_trigger();
 			}
 		} else if (key_released(J_A)) {
 			CRITICAL
 			{
-				// pu1_set_env(envelope_off(&PU1.envelope));
-				// pu2_set_env(envelope_off(&PU2.envelope));
-				// pu1_trigger();
+				envelope_off(&PU1.envelope);
+				pu1_update_env();
+				// envelope_off(&PU2.envelope);
+				// pu2_set_env();
+				pu1_trigger();
 				// pu2_trigger();
 
-				wav_set_volume(0);
-				wav_trigger();
+				// wav_set_volume(0);
+				// wav_trigger();
 			}
 		}
 

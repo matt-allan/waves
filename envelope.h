@@ -31,11 +31,7 @@ enum env_stage
 static const uint8_t NUM_ENV_STAGES = 4;
 
 /**
- * An ADSR volume envelope for a pulse or noise channel.
- * 
- * The envelope registers can only count up or down and cannot be stopped at a
- * particular volume. To create a full ADSR envelope the registers must be
- * written 4 times in succession at the exact time.
+ * An ADSR volume envelope for a channel.
  **/
 struct envelope
 {	
@@ -53,6 +49,8 @@ struct envelope
 	uint8_t length;
 	/** Counts down until stop */
 	uint8_t length_timer;
+	/** The volume we are sweeping from. */
+	uint8_t start_volume;
 	/** The volume we are sweeping towards. */
 	uint8_t target_volume;
 	/** The current sweep pace. */
@@ -68,17 +66,17 @@ struct envelope
 /**
  * Turn on the envelope, starting the attack stage.
  */
-uint8_t envelope_on(struct envelope *env, uint8_t volume);
+void envelope_on(struct envelope *env, uint8_t volume);
 
 /**
  * Turn off the envelope, moving to the release phase.
  */
-uint8_t envelope_off(struct envelope *env);
+void envelope_off(struct envelope *env);
 
 /**
  * Immediately stop the envelope.
  */
-uint8_t envelope_kill(struct envelope *env);
+void envelope_kill(struct envelope *env);
 
 /**
  * Advance the envelope one tick.
@@ -86,8 +84,8 @@ uint8_t envelope_kill(struct envelope *env);
  * The envelope should be advanced at 64 Hz to match the DIV-APU's envelope
  * sweep.
  * 
- * Returns the next register value to set or 0 to keep the current value.
+ * Returns true if the envelope stage has changed.
  */
-uint8_t envelope_tick(struct envelope *env);
+bool envelope_tick(struct envelope *env);
 
 #endif // WAVES_ENVELOPE_H
