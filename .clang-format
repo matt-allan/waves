@@ -2,7 +2,7 @@
 IndentWidth: 8
 UseTab: Always
 BreakBeforeBraces: Linux
-ColumnLimit: 100
+ColumnLimit: 80
 AllowShortIfStatementsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 IndentCaseLabels: false

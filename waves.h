@@ -52,8 +52,10 @@ struct pulse2 {
 
 struct wave {
 	uint16_t period;
-	/** The length of the envelope if fixed (0-63) */
+	/** The length of the envelope if fixed */
 	uint8_t length;
+	/** The wave amplitude (0-3) */
+	uint8_t volume;
 	/** The wave pattern loaded into RAM */
 	uint8_t wave[16];
 };

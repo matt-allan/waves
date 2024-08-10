@@ -1,6 +1,7 @@
 #include "waves.h"
 #include "envelope.h"
 #include <asm/types.h>
+#include <assert.h>
 #include <gb/gb.h>
 #include <gb/hardware.h>
 // #include <gbdk/console.h>
@@ -11,12 +12,13 @@
 uint8_t last_keys = 0;
 uint8_t keys = 0;
 
-struct pulse1 PU1 = {
-	.envelope = {0}
-};
+struct pulse1 PU1 = {.envelope = {0}};
 
-struct pulse2 PU2 = {
-	.envelope = {0}
+struct pulse2 PU2 = {.envelope = {0}};
+
+struct wave WAV = {
+    .wave = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+	     0xFF, 0x00, 0xFF, 0x00, 0xFF},
 };
 
 inline void update_keys(void)
@@ -55,14 +57,13 @@ inline void apu_enable(void)
 
 void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 {
-	struct sweep* sweep = &PU1.sweep;
+	struct sweep *sweep = &PU1.sweep;
 	sweep->pace = pace;
 	sweep->dir = dir;
 	sweep->step = step;
 
-	NR10_REG =  (pace << 4) | (dir << 3) | step;
+	NR10_REG = (pace << 4) | (dir << 3) | step;
 }
-
 
 void pu1_set_duty_cycle(enum duty_cycle duty)
 {
@@ -81,7 +82,7 @@ inline void pu1_set_env(uint8_t env_val)
 	NR12_REG = env_val;
 }
 
-void pu1_trigger()
+void pu1_trigger(void)
 {
 	uint8_t len_en = PU1.envelope.length != 0;
 	uint16_t period = PU1.period;
@@ -107,7 +108,7 @@ inline void pu2_set_env(uint8_t env_val)
 	NR22_REG = env_val;
 }
 
-void pu2_trigger()
+void pu2_trigger(void)
 {
 	uint8_t len_en = PU2.envelope.length != 0;
 	uint16_t period = PU2.period;
@@ -116,11 +117,34 @@ void pu2_trigger()
 	NR24_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
-void wav_trigger()
+void wav_set_length(uint8_t len)
 {
-	// TODO: from struct
-	uint8_t len_en = 0;
-	uint16_t period = 1046;
+	WAV.length = len;
+	NR31_REG = len;
+}
+
+void wav_set_volume(uint8_t volume)
+{
+	WAV.volume = volume;
+	NR32_REG = (volume << 5);
+}
+
+void wav_set_wave_data(uint8_t wave_data[16])
+{	
+	NR30_REG = 0x00;
+	unsigned char *wave_ram = (unsigned char *)0xFF30;
+	for (uint8_t i = 0; i < 16; i++) {
+		*wave_ram = wave_data[i];
+		WAV.wave[i] = wave_data[i];
+		wave_ram++;
+	}
+	NR30_REG = 0x80;
+}
+
+void wav_trigger(void)
+{
+	uint8_t len_en = WAV.length != 0;
+	uint16_t period = WAV.period;
 
 	NR33_REG = period & 0xFF;
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
@@ -164,43 +188,43 @@ void main(void)
 	PU2.envelope.sustain = 2;
 	PU2.envelope.release = 7;
 
-	uint8_t saw_wave[16] = {
-		0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
-		0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10
-	};
+	uint8_t saw_wave_half[16] = {0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
 
-	NR30_REG = 0x80; // wave enable
+	uint8_t saw_wave[16] = {0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
+				0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
 
-	// Load into wave RAM
-	unsigned char* wave_ram = (unsigned char*)0xFF30;
-	for (uint8_t i = 0; i < 16; i++) {
-		*wave_ram = saw_wave[i];
-		wave_ram++;
-	}
+	WAV.period = 1379;
+	wav_set_wave_data(saw_wave);
 
 	while (1) {
 		update_keys();
 		if (key_ticked(J_A)) {
 			CRITICAL
 			{
-				pu1_set_env(envelope_on(&PU1.envelope, MAX_VOLUME));
-				pu2_set_env(envelope_on(&PU2.envelope, MAX_VOLUME));
-				pu1_trigger();
-				pu2_trigger();
+				// pu1_set_env(
+				//     envelope_on(&PU1.envelope, MAX_VOLUME));
+				// pu2_set_env(
+				//     envelope_on(&PU2.envelope, MAX_VOLUME));
+				// pu1_trigger();
+				// pu2_trigger();
 
-				NR32_REG = 0x20; // max volume
+				wav_set_volume(1);
+
+				wav_set_wave_data(saw_wave_half);
 				wav_trigger();
-
+				delay(800);
+				wav_set_wave_data(saw_wave);
+				wav_trigger();
 			}
 		} else if (key_released(J_A)) {
 			CRITICAL
 			{
-				pu1_set_env(envelope_off(&PU1.envelope));
-				pu2_set_env(envelope_off(&PU2.envelope));
-				pu1_trigger();
-				pu2_trigger();
+				// pu1_set_env(envelope_off(&PU1.envelope));
+				// pu2_set_env(envelope_off(&PU2.envelope));
+				// pu1_trigger();
+				// pu2_trigger();
 
-				NR32_REG = 0 << 5; // zero volume
+				wav_set_volume(0);
 				wav_trigger();
 			}
 		}
