@@ -86,14 +86,16 @@ Bidirectional over the Game Boy link port.
 | Direction | Messages |
 |-----------|----------|
 | MCU → GB | Patch load (on boot), note-on (channel + period), note-off (channel), CC param update |
-| GB → MCU | Param changed (knob edit), MIDI assignment changed |
+| GB → MCU | Patch save (user-initiated), MIDI assignment changed |
 
 Note-on includes the period (frequency) pre-computed by the MCU. The GB does not
 need a note-to-period lookup table.
 
-**Param updates are apply-then-notify:** the GB applies changes immediately for
-zero-latency knob feel, then sends the new value to the MCU for storage.
-The MCU does not ack; if the link drops the GB keeps making sound.
+**Patch edits are local until saved.** The GB applies parameter changes
+immediately for zero-latency feel. When the user explicitly saves the patch
+(dedicated save action in the editor), the full patch is sent to the MCU for
+persistent storage. The MCU does not ack; if the link drops the GB keeps making
+sound.
 
 ## UI
 
@@ -111,10 +113,9 @@ opens its patch editor.
 
 **Preview / standalone mode:**
 
-When no MCU is connected the GB falls back to standalone mode. The joypad
-drives notes directly: Select previews the current instrument at middle C.
-This is also useful during development and parameter tweaking without a full
-MIDI setup.
+When no MCU is connected the GB falls back to standalone mode. Select drones
+middle C on the current instrument; releasing Select stops the note. This is
+useful for auditing patches without a full MIDI setup.
 
 Middle C is period `1046` (hardcoded constant; the full frequency table lives
 on the MCU).

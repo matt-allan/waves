@@ -21,16 +21,15 @@
 ## Preview / standalone mode
 
 - [ ] Refactor hardcoded test values out of `main()` into a proper preview path
-- [ ] Select button triggers note-on at `MIDDLE_C_PERIOD` on the currently selected
-      instrument, release triggers note-off (same as existing A button behavior
-      but instrument-aware)
+- [ ] Select held → note-on at `MIDDLE_C_PERIOD` on current instrument;
+      Select released → note-off
 - [ ] Stub for MCU detection — if no MCU connected on boot, enter standalone mode
 
 ## Serial protocol
 
 - [ ] Define message format (framing, opcodes, payload layout)
 - [ ] MCU → GB: patch load, note-on (channel + period), note-off, CC param update
-- [ ] GB → MCU: param changed, MIDI assignment changed
+- [ ] GB → MCU: patch save (user-initiated, sends full patch), MIDI assignment changed
 - [ ] Link port serial ISR — receive bytes, dispatch to engine functions
 - [ ] Startup handshake — wait for MCU patch state before enabling sound;
       fall back to standalone mode after timeout
