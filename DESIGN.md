@@ -86,7 +86,7 @@ Bidirectional over the Game Boy link port.
 | Direction | Messages |
 |-----------|----------|
 | MCU → GB | Patch load (on boot), note-on (channel + period), note-off (channel), CC param update |
-| GB → MCU | Patch save (user-initiated), MIDI assignment changed |
+| GB → MCU | Patch save (user-initiated) |
 
 Note-on includes the period (frequency) pre-computed by the MCU. The GB does not
 need a note-to-period lookup table.
