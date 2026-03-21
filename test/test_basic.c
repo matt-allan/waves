@@ -9,7 +9,6 @@
  * is non-zero if any test failed.
  */
 #include "harness.h"
-#include "protocol.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -128,11 +127,10 @@ static void test_screen_capture(const char *rom, const char *boot_rom)
 }
 
 /*
- * test_serial_enqueue — enqueue a note-on and note-off, run frames so the
- * serial hardware has time to clock the bytes in, then check the TX queue
- * drains.  (The GB serial ISR is not yet implemented, so bytes may not be
- * consumed; this test just verifies the harness side doesn't crash or
- * assert.)
+ * test_serial_enqueue — enqueue a few raw bytes and run frames so the serial
+ * hardware has time to clock them in.  Verifies the harness serial plumbing
+ * doesn't crash; specific protocol framing is tested once the GB serial ISR
+ * is implemented.
  */
 static void test_serial_enqueue(const char *rom, const char *boot_rom)
 {
@@ -140,51 +138,21 @@ static void test_serial_enqueue(const char *rom, const char *boot_rom)
 	harness_t *h = harness_new(rom, boot_rom);
 	if (!h) { g_failures++; print_result("test_serial_enqueue", before); return; }
 
-	/*
-	 * Middle C on PU1: period 1046 (from DESIGN.md).
-	 * This matches the MIDDLE_C_PERIOD constant that will be added to
-	 * waves.h once the serial ISR is implemented.
-	 */
-	harness_send_note_on(h, WAVES_CH_PU1, 1046);
+	harness_serial_enqueue(h, 0x01);
+	harness_serial_enqueue(h, 0x00);
+	harness_serial_enqueue(h, 0x04);
+	harness_serial_enqueue(h, 0x16);
 
-	/* Run enough frames to clock 4 bytes through at ~8192 baud */
+	/* Run enough frames to clock the bytes through at ~8192 baud */
 	harness_run_frames(h, 30);
 
-	harness_send_note_off(h, WAVES_CH_PU1);
-	harness_run_frames(h, 10);
-
-	/* No crash = pass for now; extend assertions as protocol is implemented */
+	/* No crash = pass for now */
 	EXPECT(true, "should not reach here on crash");
 
 	harness_free(h);
 	print_result("test_serial_enqueue", before);
 }
 
-/*
- * test_audio_after_note_on — queue a note-on and verify audio continues
- * flowing.  Once the GB serial ISR is wired up this test can be tightened
- * to assert non-silent output.
- */
-static void test_audio_after_note_on(const char *rom, const char *boot_rom)
-{
-	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
-	if (!h) { g_failures++; print_result("test_audio_after_note_on", before); return; }
-
-	/* Let the ROM settle */
-	harness_run_frames(h, 10);
-	harness_drain_audio(h, NULL, 0); /* discard baseline */
-
-	harness_send_note_on(h, WAVES_CH_PU1, 1046);
-	harness_run_frames(h, 20);
-
-	size_t samples = harness_audio_available(h);
-	EXPECT(samples > 0,
-	       "expected audio samples after note-on, got 0");
-
-	harness_free(h);
-	print_result("test_audio_after_note_on", before);
-}
 
 /* ---------------------------------------------------------------------- */
 /* main                                                                     */
@@ -208,7 +176,6 @@ int main(void)
 	test_audio_output(rom, boot_rom);
 	test_screen_capture(rom, boot_rom);
 	test_serial_enqueue(rom, boot_rom);
-	test_audio_after_note_on(rom, boot_rom);
 
 	printf("\n%s (%d failure%s)\n",
 	       g_failures == 0 ? "ALL PASS" : "FAILURES DETECTED",

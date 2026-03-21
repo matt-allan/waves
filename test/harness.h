@@ -77,15 +77,6 @@ void harness_serial_enqueue(harness_t *h, uint8_t byte);
  */
 bool harness_serial_dequeue(harness_t *h, uint8_t *out);
 
-/*
- * Convenience wrappers that build and enqueue complete protocol messages.
- * See test/protocol.h for field semantics.
- */
-void harness_send_note_on(harness_t *h, uint8_t channel, uint16_t period);
-void harness_send_note_off(harness_t *h, uint8_t channel);
-void harness_send_cc_update(harness_t *h, uint8_t channel,
-                            uint8_t param, uint8_t value);
-
 /* ---------------------------------------------------------------------- */
 /* Screen capture                                                           */
 /* ---------------------------------------------------------------------- */

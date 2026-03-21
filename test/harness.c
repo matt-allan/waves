@@ -2,7 +2,6 @@
  * harness.c — SameBoy-backed test harness for waves.gb
  */
 #include "harness.h"
-#include "protocol.h"
 
 #include <sameboy/gb.h>
 
@@ -251,28 +250,6 @@ bool harness_serial_dequeue(harness_t *h, uint8_t *out)
 	return true;
 }
 
-void harness_send_note_on(harness_t *h, uint8_t channel, uint16_t period)
-{
-	harness_serial_enqueue(h, WAVES_MSG_NOTE_ON);
-	harness_serial_enqueue(h, channel);
-	harness_serial_enqueue(h, (uint8_t)(period >> 8));
-	harness_serial_enqueue(h, (uint8_t)(period & 0xFF));
-}
-
-void harness_send_note_off(harness_t *h, uint8_t channel)
-{
-	harness_serial_enqueue(h, WAVES_MSG_NOTE_OFF);
-	harness_serial_enqueue(h, channel);
-}
-
-void harness_send_cc_update(harness_t *h, uint8_t channel,
-                            uint8_t param, uint8_t value)
-{
-	harness_serial_enqueue(h, WAVES_MSG_CC_UPDATE);
-	harness_serial_enqueue(h, channel);
-	harness_serial_enqueue(h, param);
-	harness_serial_enqueue(h, value);
-}
 
 /* ---------------------------------------------------------------------- */
 /* Screen capture                                                           */
