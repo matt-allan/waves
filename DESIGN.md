@@ -111,13 +111,12 @@ uint8_t         data  = hdr & 7;
 |-----|------|-----|-------------|-------|
 | 0 | NOTE_ON | MCU→GB | period[7:0] | DDD = period[10:8]; NOISE: DDD=0, byte = NR43 |
 | 1 | NOTE_OFF | MCU→GB | — | |
-| 2 | SET_PARAM | both | param_id, value | patch update; used both directions |
-| 3 | HANDSHAKE | both | — | MCU sends first; GB echoes as ACK |
-| 4 | MIDI_ASSIGN | GB→MCU | midi_channel | sent immediately on user change |
+| 2 | SET_PARAM | both | param_id, value | covers boot patches, CC, and MIDI channel assignment |
 
-5–7 reserved.
+3–7 reserved.  No handshake — like MIDI, the sender streams bytes and the
+receiver processes them.  No connection setup, no ACK, no fallback mode.
 
-NOTE_ON is two bytes total; all other commands are one or three bytes.
+NOTE_ON is two bytes total; NOTE_OFF is one byte; SET_PARAM is three bytes.
 The MCU pre-computes the 11-bit APU period (or NR43 for NOISE) from the MIDI
 note number — the GB never touches a lookup table.
 
@@ -139,22 +138,22 @@ note number — the GB never touches a lookup table.
 | 26 | NOISE_WIDTH | 0–1 | NOISE (NR43 bit 3: 0=15-bit LFSR, 1=7-bit) |
 | 27 | CHAN_VOLUME | 0–7 | mixer per-instrument |
 | 28 | CHAN_PAN | 0–2 | mixer (0=L, 1=both, 2=R) |
+| 29 | MIDI_CHANNEL | 0–15 | MIDI channel assignment |
+
+MIDI_CHANNEL is sent MCU→GB on boot (so the UI can display the assignment)
+and GB→MCU immediately when the user changes it (so the MCU can update routing).
 
 ### Boot sequence
 
 ```
 MCU                              GB
- |--- HANDSHAKE (1 byte) ------->|  MCU announces link
- |<-- HANDSHAKE (1 byte) --------|  GB echoes as ACK
- |                                |
- |--- SET_PARAM × N ------------>|  all 4 patches streamed as individual
- |                                |  param messages, instrument 0–3
- |         [NOTE_ON when ready]   |  GB applies params as they arrive;
- |                                |  sound is live from HANDSHAKE
+ |--- SET_PARAM × N ------------>|  full patch state for all 4 instruments
+ |         [NOTE_ON when ready]   |  GB applies params as they arrive
 ```
 
-The GB sits idle until HANDSHAKE arrives. There is no standalone mode — the
-MCU is the only source of notes so the GB has nothing to do without it.
+No handshake.  Like MIDI, the MCU streams bytes when it is ready and the GB
+processes them.  The GB sits idle until the first message arrives; there is
+no standalone mode because the MCU is the only source of notes.
 
 ### Runtime — MCU → GB
 

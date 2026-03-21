@@ -22,7 +22,7 @@
 - [ ] MCU → GB: patch load, note-on (channel + period), note-off, CC param update
 - [ ] GB → MCU: patch save (user-initiated, sends full patch), MIDI assignment changed
 - [ ] Link port serial ISR — receive bytes, dispatch to engine functions
-- [ ] Startup handshake — wait for HANDSHAKE from MCU before enabling sound
+- [ ] Startup — GB sits idle until first message arrives; no handshake needed
 
 ## UI / screen
 

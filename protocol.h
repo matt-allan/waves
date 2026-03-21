@@ -36,11 +36,15 @@ enum instrument {
 /* ---------------------------------------------------------------------- */
 
 /*
- * 3 bits → 8 slots; 5 are used.  Direction is always known from context;
- * SET_PARAM and HANDSHAKE share the same code in both directions.
+ * Three commands cover the full protocol.  Direction is always known from
+ * context; SET_PARAM is used in both directions.
  *
- * MCU → GB: NOTE_ON, NOTE_OFF, SET_PARAM, HANDSHAKE
- * GB  → MCU: SET_PARAM, MIDI_ASSIGN, HANDSHAKE (as ACK)
+ * MCU → GB: NOTE_ON, NOTE_OFF, SET_PARAM
+ * GB  → MCU: SET_PARAM
+ *
+ * No handshake is needed.  The GB is a pure slave: its ISR processes
+ * whatever arrives.  The MCU streams the full patch state on boot and
+ * sends note/param events at runtime; no coordination ceremony is required.
  */
 enum cmd {
 	/*
@@ -67,34 +71,16 @@ enum cmd {
 	 *   Byte 1: param_id  (enum param_id)
 	 *   Byte 2: value     (uint8_t, clamped by receiver to valid range)
 	 *
-	 * MCU → GB: used during boot (patch load) and for MIDI CC updates.
-	 * GB  → MCU: used when the user saves a patch; GB sends one message per
-	 *            parameter for the full patch.
+	 * MCU → GB: streams the full patch state on boot and forwards MIDI CC
+	 *           updates at runtime.  PARAM_MIDI_CHANNEL tells the GB which
+	 *           MIDI channel each instrument is assigned to (for display).
+	 * GB  → MCU: sends one message per parameter when the user saves a
+	 *           patch.  PARAM_MIDI_CHANNEL is sent immediately when the
+	 *           user changes the assignment so the MCU can update routing.
 	 */
 	CMD_SET_PARAM = 2,
 
-	/*
-	 * HANDSHAKE — link-up announcement / acknowledgement.
-	 *   Header: [00 011 000]  (II = 0, ignored)
-	 *   No payload.
-	 *
-	 * MCU sends HANDSHAKE first.  GB responds with the same byte as an ACK.
-	 * Until HANDSHAKE is received the GB sits idle; the MCU is the only
-	 * source of notes so there is nothing to do without it.
-	 */
-	CMD_HANDSHAKE = 3,
-
-	/*
-	 * MIDI_ASSIGN — notify MCU of a MIDI channel assignment change.
-	 *   Header: [II 100 000]
-	 *   Byte 1: MIDI channel (0–15)
-	 *
-	 * Sent immediately when the user changes the MIDI channel for an
-	 * instrument in the UI.  The MCU updates its routing table.
-	 */
-	CMD_MIDI_ASSIGN = 4,
-
-	/* 5–7 reserved */
+	/* 3–7 reserved */
 };
 
 /* ---------------------------------------------------------------------- */
@@ -117,6 +103,7 @@ enum param_id {
 	PARAM_NOISE_WIDTH = 26, /* NR43 bit  3   — LFSR width: 0=15-bit, 1=7-bit  */
 	PARAM_CHAN_VOLUME  = 27, /* mixer: per-instrument volume 0–7               */
 	PARAM_CHAN_PAN    = 28, /* mixer: pan 0=left, 1=both, 2=right              */
+	PARAM_MIDI_CHANNEL = 29, /* MIDI channel assignment 0–15                  */
 };
 
 /* ---------------------------------------------------------------------- */
@@ -162,11 +149,10 @@ static inline uint8_t proto_data(uint8_t hdr)
  * - one param_id byte for SET_PARAM
  */
 enum rx_state {
-	RX_IDLE,       /* waiting for a header byte                         */
-	RX_NOTE_ON,    /* header saved; waiting for period low byte         */
-	RX_PARAM_ID,   /* header saved; waiting for param_id               */
-	RX_PARAM_VAL,  /* header + param_id saved; waiting for value       */
-	RX_MIDI_ASSIGN, /* header saved; waiting for midi_channel byte     */
+	RX_IDLE,      /* waiting for a header byte                          */
+	RX_NOTE_ON,   /* header saved; waiting for period low byte          */
+	RX_PARAM_ID,  /* header saved; waiting for param_id                 */
+	RX_PARAM_VAL, /* header + param_id saved; waiting for value         */
 };
 
 struct rx_buf {
