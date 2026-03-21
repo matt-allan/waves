@@ -81,7 +81,8 @@ both on MIDI channel 1 gives two-voice polyphony).
 
 ## Serial Protocol
 
-Bidirectional over the Game Boy link port at ~8192 baud.
+Bidirectional over the Game Boy link port at 31,250 baud (external clock,
+driven by the MCU — the same rate as MIDI).
 
 ### Header byte
 
