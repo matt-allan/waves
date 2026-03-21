@@ -1,6 +1,4 @@
-ifndef GBDK_HOME
-	GBDK_HOME = /opt/gbdk/
-endif
+GBDK_HOME ?= build/gbdk/
 
 CC := $(GBDK_HOME)bin/lcc
 ROMUSAGE := $(GBDK_HOME)bin/romusage

@@ -24,11 +24,11 @@ for patch in "$REPO_ROOT/patches/"*.patch; do
 done
 cd "$REPO_ROOT"
 
-echo "==> Creating SDCC prefix at $SDCC_PREFIX"
+echo "==> Installing SDCC binaries into $SDCC_PREFIX"
 mkdir -p "$SDCC_PREFIX/bin" "$SDCC_PREFIX/libexec"
 for bin in packihx sdar sdasgb sdcc sdcpp sdldgb sdnm sdobjcopy \
            sdranlib sdasz80 sdldz80 sdld6808 sdld; do
-    ln -sf "/usr/bin/$bin" "$SDCC_PREFIX/bin/$bin"
+    cp "/usr/bin/$bin" "$SDCC_PREFIX/bin/$bin"
 done
 
 echo "==> Building gbdk-support tools"

@@ -4,31 +4,14 @@ This project uses the GBDK-2020 toolchain to compile Game Boy ROMs. The toolchai
 consists of SDCC (SM83 C compiler), several support tools (lcc, bankpack, etc.), and
 the GB platform library.
 
-## Quick Start (pre-built GBDK)
+## Building from Source (default)
 
-The easiest path is to download the official GBDK-2020 release:
-
-```sh
-# Download and extract to /opt/gbdk (matches the default GBDK_HOME in Makefile)
-curl -L https://github.com/gbdk-2020/gbdk-2020/releases/latest/download/gbdk-linux64.tar.gz \
-    | sudo tar -xz -C /opt/
-```
-
-Then build normally:
-
-```sh
-make
-```
-
-## Building from Source
-
-The submodules at `vendor/cppp` and `vendor/gbdk-2020` can be built from source.
-A convenience script is provided:
+The Makefile defaults to `GBDK_HOME=build/gbdk/`. Run the build script once to
+populate it, then `make` works without any extra flags:
 
 ```sh
 ./scripts/build-toolchain.sh
-# Then build the project using the local toolchain:
-GBDK_HOME=build/gbdk/ make
+make
 ```
 
 ### Prerequisites
@@ -52,7 +35,7 @@ custom SDCC patches (Sega GG/SMS, NES); it is fine for Game Boy.
 | `png2asset` | `vendor/gbdk-2020/gbdk-support/png2asset` | `build/gbdk/bin/png2asset` |
 | `romusage` | `vendor/gbdk-2020/gbdk-support/romusage` | `build/gbdk/bin/romusage` |
 | `gb.lib` + `crt0.o` | `vendor/gbdk-2020/gbdk-lib` | `build/gbdk/lib/gb/` |
-| SDCC binaries | distro `/usr/bin/` | `build/gbdk/bin/` (symlinks) |
+| SDCC binaries | distro `/usr/bin/` | `build/gbdk/bin/` (copied) |
 
 ### Manual build steps
 
@@ -60,11 +43,11 @@ custom SDCC patches (Sega GG/SMS, NES); it is fine for Game Boy.
 # 1. Build cppp
 make -C vendor/cppp CC=clang
 
-# 2. Set up SDCC prefix (symlinks to distro binaries)
+# 2. Copy SDCC binaries into isolated prefix
 mkdir -p build/sdcc/bin build/sdcc/libexec
 for bin in packihx sdar sdasgb sdcc sdcpp sdldgb sdnm sdobjcopy \
            sdranlib sdasz80 sdldz80 sdld6808 sdld; do
-    ln -sf /usr/bin/$bin build/sdcc/bin/$bin
+    cp /usr/bin/$bin build/sdcc/bin/$bin
 done
 
 # 3. Build gbdk-support tools
