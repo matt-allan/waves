@@ -35,7 +35,7 @@ custom SDCC patches (Sega GG/SMS, NES); it is fine for Game Boy.
 | `png2asset` | `vendor/gbdk-2020/gbdk-support/png2asset` | `build/gbdk/bin/png2asset` |
 | `romusage` | `vendor/gbdk-2020/gbdk-support/romusage` | `build/gbdk/bin/romusage` |
 | `gb.lib` + `crt0.o` | `vendor/gbdk-2020/gbdk-lib` | `build/gbdk/lib/gb/` |
-| SDCC binaries | distro `/usr/bin/` | `build/gbdk/bin/` (copied) |
+| SDCC binaries | distro `/usr/bin/` | `build/gbdk/bin/` (copied by gbdk-install) |
 
 ### Manual build steps
 
@@ -43,23 +43,16 @@ custom SDCC patches (Sega GG/SMS, NES); it is fine for Game Boy.
 # 1. Build cppp
 make -C vendor/cppp CC=clang
 
-# 2. Copy SDCC binaries into isolated prefix
-mkdir -p build/sdcc/bin build/sdcc/libexec
-for bin in packihx sdar sdasgb sdcc sdcpp sdldgb sdnm sdobjcopy \
-           sdranlib sdasz80 sdldz80 sdld6808 sdld; do
-    cp /usr/bin/$bin build/sdcc/bin/$bin
-done
-
-# 3. Build gbdk-support tools
+# 2. Build gbdk-support tools
 make -C vendor/gbdk-2020 gbdk-support-build
 
-# 4. Build gbdk-lib for Game Boy only
+# 3. Build gbdk-lib for Game Boy only
 make -C vendor/gbdk-2020 gbdk-lib-build \
-    SDCCDIR=$(pwd)/build/sdcc PORTS=sm83 PLATFORMS=gb
+    SDCCDIR=/usr PORTS=sm83 PLATFORMS=gb
 
-# 5. Install everything into build/gbdk/
+# 4. Install everything into build/gbdk/
 make -C vendor/gbdk-2020 gbdk-install \
-    SDCCDIR=$(pwd)/build/sdcc \
+    SDCCDIR=/usr \
     PORTS=sm83 PLATFORMS=gb \
     BUILDDIR=$(pwd)/build/gbdk
 ```

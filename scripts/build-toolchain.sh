@@ -5,7 +5,6 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SDCC_PREFIX="$REPO_ROOT/build/sdcc"
 GBDK_BUILD="$REPO_ROOT/build/gbdk"
 
 cd "$REPO_ROOT"
@@ -24,23 +23,16 @@ for patch in "$REPO_ROOT/patches/"*.patch; do
 done
 cd "$REPO_ROOT"
 
-echo "==> Installing SDCC binaries into $SDCC_PREFIX"
-mkdir -p "$SDCC_PREFIX/bin" "$SDCC_PREFIX/libexec"
-for bin in packihx sdar sdasgb sdcc sdcpp sdldgb sdnm sdobjcopy \
-           sdranlib sdasz80 sdldz80 sdld6808 sdld; do
-    cp "/usr/bin/$bin" "$SDCC_PREFIX/bin/$bin"
-done
-
 echo "==> Building gbdk-support tools"
 make -C vendor/gbdk-2020 gbdk-support-build
 
 echo "==> Building gbdk-lib (sm83/gb only)"
 make -C vendor/gbdk-2020 gbdk-lib-build \
-    SDCCDIR="$SDCC_PREFIX" PORTS=sm83 PLATFORMS=gb
+    SDCCDIR=/usr PORTS=sm83 PLATFORMS=gb
 
 echo "==> Installing GBDK to $GBDK_BUILD"
 make -C vendor/gbdk-2020 gbdk-install \
-    SDCCDIR="$SDCC_PREFIX" \
+    SDCCDIR=/usr \
     PORTS=sm83 PLATFORMS=gb \
     BUILDDIR="$GBDK_BUILD"
 
