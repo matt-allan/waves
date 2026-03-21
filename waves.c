@@ -64,14 +64,10 @@ inline uint8_t env_reg_val(struct envelope *env)
 	return (env->start_volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
 }
 
-void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
+void pu1_set_sweep(uint8_t nr10)
 {
-	struct sweep *sweep = &PU1.sweep;
-	sweep->pace = pace;
-	sweep->dir = dir;
-	sweep->step = step;
-
-	NR10_REG = (pace << 4) | (dir << 3) | step;
+	PU1.nr10 = nr10;
+	NR10_REG = nr10;
 }
 
 void pu1_set_duty_cycle(enum duty_cycle duty)
@@ -204,73 +200,49 @@ static void note_off(enum instrument instr)
 	}
 }
 
-static void set_param(enum instrument instr, uint8_t param_id, uint8_t value)
+static void set_param(enum instrument instr, uint8_t cmd, uint8_t value)
 {
-	if (instr == INSTR_WAV && param_id >= MCU_PARAM_WAVE_0 &&
-	    param_id < MCU_PARAM_WAVE_0 + 16) {
-		uint8_t i = param_id - MCU_PARAM_WAVE_0;
-		WAV.wave[i] = value;
-		NR30_REG = 0x00;
-		((unsigned char *)0xFF30)[i] = value;
-		NR30_REG = 0x80;
-		return;
-	}
-
-	switch (param_id) {
-	case MCU_PARAM_ATTACK:
+	switch (cmd) {
+	case CMD_ATTACK:
 		if (instr == INSTR_PU1)
 			PU1.envelope.attack = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.attack = value;
 		break;
-	case MCU_PARAM_DECAY:
+	case CMD_DECAY:
 		if (instr == INSTR_PU1)
 			PU1.envelope.decay = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.decay = value;
 		break;
-	case MCU_PARAM_SUSTAIN:
+	case CMD_SUSTAIN:
 		if (instr == INSTR_PU1)
 			PU1.envelope.sustain = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.sustain = value;
 		break;
-	case MCU_PARAM_RELEASE:
+	case CMD_RELEASE:
 		if (instr == INSTR_PU1)
 			PU1.envelope.release = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.release = value;
 		break;
-	case MCU_PARAM_DUTY_CYCLE:
+	case CMD_VOLUME:
+		if (instr == INSTR_WAV)
+			wav_set_volume(value);
+		break;
+	case PU1_DUTY_CYCLE: /* == PU2_DUTY_CYCLE == WAV_SET_WAVE == NOISE_CTRL == 25 */
 		if (instr == INSTR_PU1)
 			pu1_set_duty_cycle((enum duty_cycle)value);
 		else if (instr == INSTR_PU2)
 			pu2_set_duty_cycle((enum duty_cycle)value);
+		/* WAV_SET_WAVE handled by RX_WAVE state; NOISE_CTRL: stub */
 		break;
-	case MCU_PARAM_SWEEP_PACE:
+	case PU1_SWEEP: /* 26, PU1 only */
 		if (instr == INSTR_PU1) {
-			PU1.sweep.pace = value;
-			NR10_REG = (PU1.sweep.pace << 4) |
-				   (PU1.sweep.dir << 3) | PU1.sweep.step;
+			PU1.nr10 = value;
+			NR10_REG = value;
 		}
-		break;
-	case MCU_PARAM_SWEEP_DIR:
-		if (instr == INSTR_PU1) {
-			PU1.sweep.dir = (enum sweep_dir)value;
-			NR10_REG = (PU1.sweep.pace << 4) |
-				   (PU1.sweep.dir << 3) | PU1.sweep.step;
-		}
-		break;
-	case MCU_PARAM_SWEEP_STEP:
-		if (instr == INSTR_PU1) {
-			PU1.sweep.step = value;
-			NR10_REG = (PU1.sweep.pace << 4) |
-				   (PU1.sweep.dir << 3) | PU1.sweep.step;
-		}
-		break;
-	case MCU_PARAM_VOLUME:
-		if (instr == INSTR_WAV)
-			wav_set_volume(value);
 		break;
 	}
 }
@@ -278,34 +250,45 @@ static void set_param(enum instrument instr, uint8_t param_id, uint8_t value)
 void serial_isr(void)
 {
 	uint8_t byte = SB_REG;
+	uint8_t cmd;
 
 	switch (rx.state) {
 	case RX_IDLE:
 		rx.hdr = byte;
-		switch (mcu_hdr_cmd(byte)) {
-		case MCU_NOTE_ON:
-			rx.state = RX_NOTE_ON;
-			break;
-		case MCU_NOTE_OFF:
-			note_off(mcu_hdr_instr(byte));
-			break;
-		case MCU_SET_PARAM:
-			rx.state = RX_PARAM_ID;
-			break;
+		cmd = proto_cmd(byte);
+		if (cmd == MCU_NOTE_ON) {
+			rx.state = RX_NOTE_HI;
+		} else if (cmd == MCU_NOTE_OFF) {
+			note_off(proto_instr(byte));
+		} else if (proto_instr(byte) == INSTR_WAV &&
+			   cmd == WAV_SET_WAVE) {
+			rx.wave_idx = 0;
+			NR30_REG = 0x00;
+			rx.state = RX_WAVE;
+		} else {
+			rx.state = RX_VAL;
 		}
 		break;
-	case RX_NOTE_ON:
-		note_on(mcu_hdr_instr(rx.hdr),
-			((uint16_t)mcu_hdr_data(rx.hdr) << 8) | byte);
+	case RX_NOTE_HI:
+		rx.period_hi = byte;
+		rx.state = RX_NOTE_LO;
+		break;
+	case RX_NOTE_LO:
+		note_on(proto_instr(rx.hdr),
+			((uint16_t)(rx.period_hi & 0x07) << 8) | byte);
 		rx.state = RX_IDLE;
 		break;
-	case RX_PARAM_ID:
-		rx.param_id = byte;
-		rx.state = RX_PARAM_VAL;
-		break;
-	case RX_PARAM_VAL:
-		set_param(mcu_hdr_instr(rx.hdr), rx.param_id, byte);
+	case RX_VAL:
+		set_param(proto_instr(rx.hdr), proto_cmd(rx.hdr), byte);
 		rx.state = RX_IDLE;
+		break;
+	case RX_WAVE:
+		WAV.wave[rx.wave_idx] = byte;
+		((unsigned char *)0xFF30)[rx.wave_idx] = byte;
+		if (++rx.wave_idx == 16) {
+			NR30_REG = 0x80;
+			rx.state = RX_IDLE;
+		}
 		break;
 	}
 
