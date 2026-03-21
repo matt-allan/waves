@@ -75,7 +75,7 @@ static uint32_t cb_rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 static void cb_vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
 {
 	(void)type;
-	harness_t *h = GB_get_user_data(gb);
+	struct harness *h = GB_get_user_data(gb);
 	h->frame_ready = true;
 }
 
@@ -88,7 +88,7 @@ static void cb_log(GB_gameboy_t *gb, const char *str, GB_log_attributes_t attrs)
 
 static void cb_audio_sample(GB_gameboy_t *gb, GB_sample_t *sample)
 {
-	harness_t *h = GB_get_user_data(gb);
+	struct harness *h = GB_get_user_data(gb);
 
 	size_t next = (h->audio_head + 1) % HARNESS_AUDIO_BUF_LEN;
 	if (next == h->audio_tail) {
@@ -106,7 +106,7 @@ static void cb_audio_sample(GB_gameboy_t *gb, GB_sample_t *sample)
  */
 static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
 {
-	harness_t *h = GB_get_user_data(gb);
+	struct harness *h = GB_get_user_data(gb);
 
 	/* Accumulate bit from GB (MSB first: bit 7 arrives first) */
 	h->rx_byte = (uint8_t)((h->rx_byte << 1) | (bit_to_send ? 1 : 0));
@@ -130,7 +130,7 @@ static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
  */
 static bool cb_serial_bit_end(GB_gameboy_t *gb)
 {
-	harness_t *h = GB_get_user_data(gb);
+	struct harness *h = GB_get_user_data(gb);
 
 	/* Load next byte from tx_queue if we are idle */
 	if (h->tx_bit < 0) {
@@ -150,9 +150,9 @@ static bool cb_serial_bit_end(GB_gameboy_t *gb)
 /* Lifecycle                                                                */
 /* ---------------------------------------------------------------------- */
 
-harness_t *harness_new(const char *rom_path, const char *boot_rom_path)
+struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 {
-	harness_t *h = calloc(1, sizeof(*h));
+	struct harness *h = calloc(1, sizeof(*h));
 	if (!h) {
 		fprintf(stderr, "harness: out of memory\n");
 		return NULL;
@@ -205,7 +205,7 @@ harness_t *harness_new(const char *rom_path, const char *boot_rom_path)
 	return h;
 }
 
-void harness_free(harness_t *h)
+void harness_free(struct harness *h)
 {
 	if (!h)
 		return;
@@ -217,7 +217,7 @@ void harness_free(harness_t *h)
 /* Emulation control                                                        */
 /* ---------------------------------------------------------------------- */
 
-void harness_run_frames(harness_t *h, int n)
+void harness_run_frames(struct harness *h, int n)
 {
 	for (int i = 0; i < n; i++) {
 		h->frame_ready = false;
@@ -230,7 +230,7 @@ void harness_run_frames(harness_t *h, int n)
 /* Link port                                                                */
 /* ---------------------------------------------------------------------- */
 
-void harness_serial_enqueue(harness_t *h, uint8_t byte)
+void harness_serial_enqueue(struct harness *h, uint8_t byte)
 {
 	int next = (h->tx_tail + 1) % HARNESS_SERIAL_QUEUE_LEN;
 	if (next == h->tx_head) {
@@ -241,7 +241,7 @@ void harness_serial_enqueue(harness_t *h, uint8_t byte)
 	h->tx_tail = next;
 }
 
-bool harness_serial_dequeue(harness_t *h, uint8_t *out)
+bool harness_serial_dequeue(struct harness *h, uint8_t *out)
 {
 	if (h->rx_head == h->rx_tail)
 		return false;
@@ -255,12 +255,12 @@ bool harness_serial_dequeue(harness_t *h, uint8_t *out)
 /* Screen capture                                                           */
 /* ---------------------------------------------------------------------- */
 
-const uint32_t *harness_get_framebuffer(const harness_t *h)
+const uint32_t *harness_get_framebuffer(const struct harness *h)
 {
 	return h->pixels;
 }
 
-int harness_save_ppm(const harness_t *h, const char *path)
+int harness_save_ppm(const struct harness *h, const char *path)
 {
 	FILE *f = fopen(path, "w");
 	if (!f) {
@@ -288,7 +288,7 @@ int harness_save_ppm(const harness_t *h, const char *path)
 /* Audio capture                                                            */
 /* ---------------------------------------------------------------------- */
 
-size_t harness_drain_audio(harness_t *h, GB_sample_t *buf, size_t max_samples)
+size_t harness_drain_audio(struct harness *h, GB_sample_t *buf, size_t max_samples)
 {
 	size_t count = 0;
 	while (count < max_samples && h->audio_tail != h->audio_head) {
@@ -298,7 +298,7 @@ size_t harness_drain_audio(harness_t *h, GB_sample_t *buf, size_t max_samples)
 	return count;
 }
 
-size_t harness_audio_available(const harness_t *h)
+size_t harness_audio_available(const struct harness *h)
 {
 	return (h->audio_head - h->audio_tail + HARNESS_AUDIO_BUF_LEN)
 	       % HARNESS_AUDIO_BUF_LEN;
