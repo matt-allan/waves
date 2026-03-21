@@ -10,7 +10,7 @@ GBDK_BUILD="$REPO_ROOT/build/gbdk"
 cd "$REPO_ROOT"
 
 echo "==> Initialising submodules"
-git submodule update --init vendor/cppp vendor/gbdk-2020 vendor/SameBoy
+git submodule update --init vendor/cppp vendor/gbdk-2020
 
 echo "==> Building cppp"
 make -C vendor/cppp CC=clang
@@ -35,9 +35,6 @@ make -C vendor/gbdk-2020 gbdk-install \
     SDCCDIR=/usr \
     PORTS=sm83 PLATFORMS=gb \
     BUILDDIR="$GBDK_BUILD"
-
-echo "==> Building SameBoy headers and lib"
-PATH="$REPO_ROOT/vendor/cppp:$PATH" make -C vendor/SameBoy headers lib CONF=release
 
 echo ""
 echo "Done. Build with:"
