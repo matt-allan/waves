@@ -1,8 +1,8 @@
 GBDK_HOME ?= build/gbdk/
 
-CC := $(GBDK_HOME)bin/lcc
+CC       := $(GBDK_HOME)bin/lcc
 ROMUSAGE := $(GBDK_HOME)bin/romusage
-CFLAGS := -Wa-l -Wl-m -Wl-j -msm83:gb
+CFLAGS   := -Wa-l -Wl-m -Wl-j -msm83:gb
 
 ifdef DEBUG
 	CFLAGS += -debug -v
@@ -10,6 +10,17 @@ endif
 
 GAME := waves
 
+SAMEBOY_ROOT := vendor/SameBoy
+SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
+SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
+
+TEST_CC      := gcc
+TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest
+TEST_LDFLAGS := -lm
+
+TESTS := test/test_basic
+
+.PHONY: all
 all: $(GAME).gb
 
 $(GAME).gb: waves.o envelope.o
@@ -29,15 +40,24 @@ envelope.o: envelope.c envelope.h
 .PHONY: clean
 clean:
 	rm -f *.o *.lst *.map *.gb *.ihx *.sym *.cdb *.adb *.asm *.noi *.rst
+	rm -f test/*.o $(TESTS)
 
 .PHONY: run
 run:
 	sameboy $(GAME).gb
 
-vendor/SameBoy/.git:
-	git submodule update --init vendor/SameBoy
-
 .PHONY: test
-test: $(GAME).gb vendor/SameBoy/.git
-	$(MAKE) -C test
-	cd test && ./test_basic
+test: $(GAME).gb $(TESTS)
+	WAVES_ROM=$(GAME).gb test/test_basic
+
+$(SAMEBOY_LIB):
+	PATH="$(abspath vendor/cppp):$$PATH" $(MAKE) -C $(SAMEBOY_ROOT) headers lib CONF=release
+
+test/harness.o: test/harness.c test/harness.h | $(SAMEBOY_LIB)
+	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
+
+test/test_basic.o: test/test_basic.c test/harness.h | $(SAMEBOY_LIB)
+	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
+
+test/test_basic: test/test_basic.o test/harness.o $(SAMEBOY_LIB)
+	$(TEST_CC) $^ $(TEST_LDFLAGS) -o $@
