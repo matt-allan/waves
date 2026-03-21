@@ -64,6 +64,19 @@ static inline int queue_free(int head, int tail, int cap)
 	return cap - 1 - queue_used(head, tail, cap);
 }
 
+/*
+ * Minimal DMG boot ROM stub — all NOPs except for the last four bytes
+ * which write 1 to 0xFF50 (disabling the boot ROM mapping) and let the
+ * CPU fall through to address 0x0100 (game entry point).
+ *
+ *   0x00FC: LD A, 1       (3E 01)
+ *   0x00FE: LDH (0x50), A (E0 50)
+ */
+static const uint8_t boot_rom_stub[256] = {
+	[0xFC] = 0x3E, [0xFD] = 0x01, /* LD A, 1          */
+	[0xFE] = 0xE0, [0xFF] = 0x50, /* LDH (0x50), A    */
+};
+
 /* ---------------------------------------------------------------------- */
 /* SameBoy callbacks                                                        */
 /* ---------------------------------------------------------------------- */
@@ -201,7 +214,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 	GB_set_serial_transfer_bit_start_callback(h->gb, cb_serial_bit_start);
 	GB_set_serial_transfer_bit_end_callback(h->gb, cb_serial_bit_end);
 
-	/* Boot ROM (optional) */
+	/* Boot ROM: use provided image or the built-in stub (see boot_rom_stub). */
 	if (boot_rom_path) {
 		if (GB_load_boot_rom(h->gb, boot_rom_path) != 0) {
 			fprintf(stderr, "harness: failed to load boot ROM: %s\n",
@@ -210,6 +223,9 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 			free(h);
 			return NULL;
 		}
+	} else {
+		GB_load_boot_rom_from_buffer(h->gb, boot_rom_stub,
+		                             sizeof(boot_rom_stub));
 	}
 
 	/* Game ROM */

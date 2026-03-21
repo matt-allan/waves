@@ -31,9 +31,9 @@ struct harness;
  * Allocate and initialise a harness.
  *
  * rom_path is the path to waves.gb (must exist).  boot_rom_path is the
- * path to a DMG boot ROM image, or NULL to skip (the emulator starts
- * directly at the ROM entry point; some hardware-init code may behave
- * differently).
+ * path to a DMG boot ROM image, or NULL to use a minimal built-in stub
+ * that finishes the boot ROM sequence so interrupt vectors are correctly
+ * mapped to the ROM.
  *
  * Returns NULL on failure (error printed to stderr).
  */
