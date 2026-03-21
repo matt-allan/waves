@@ -110,12 +110,3 @@ opens its patch editor.
 **Mixer:**
 - Per-instrument volume and pan
 - Master volume
-
-**Preview / standalone mode:**
-
-When no MCU is connected the GB falls back to standalone mode. Select drones
-middle C on the current instrument; releasing Select stops the note. This is
-useful for auditing patches without a full MIDI setup.
-
-Middle C is period `1046` (hardcoded constant; the full frequency table lives
-on the MCU).
