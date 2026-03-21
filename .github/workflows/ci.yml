@@ -22,7 +22,6 @@ jobs:
         id: submodule-shas
         run: |
           echo "toolchain=$(git rev-parse HEAD:vendor/gbdk-2020)-$(git rev-parse HEAD:vendor/cppp)" >> "$GITHUB_OUTPUT"
-          echo "sameboy=$(git rev-parse HEAD:vendor/SameBoy)" >> "$GITHUB_OUTPUT"
 
       - name: Cache toolchain
         id: cache-toolchain
@@ -39,28 +38,6 @@ jobs:
 
       - name: Build ROM
         run: make
-
-      - name: Cache SameBoy lib
-        id: cache-sameboy
-        uses: actions/cache@v4
-        with:
-          path: vendor/SameBoy/build
-          key: sameboy-${{ steps.submodule-shas.outputs.sameboy }}
-
-      - name: Build SameBoy lib
-        if: steps.cache-sameboy.outputs.cache-hit != 'true'
-        run: PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers lib CONF=release
-
-      - name: Validate SameBoy headers
-        run: |
-          HEADER_PATH="vendor/SameBoy/build/include/sameboy/apu.h"
-          SAMPLE_TYPE="GB_sample_t"
-
-          if [ ! -f "$HEADER_PATH" ] || ! grep -q "$SAMPLE_TYPE" "$HEADER_PATH"; then
-            rm -rf vendor/SameBoy/build/include/sameboy
-            PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers CONF=release
-          fi
-          grep -q "$SAMPLE_TYPE" "$HEADER_PATH"
 
       - name: Build and run tests
         run: make test
