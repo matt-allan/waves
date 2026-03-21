@@ -16,10 +16,10 @@ all: $(TESTS)
 $(SAMEBOY_LIB):
 	$(MAKE) -C $(SAMEBOY_ROOT) lib
 
-harness.o: harness.c harness.h protocol.h | $(SAMEBOY_LIB)
+harness.o: harness.c harness.h | $(SAMEBOY_LIB)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test_basic.o: test_basic.c harness.h protocol.h
+test_basic.o: test_basic.c harness.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 test_basic: test_basic.o harness.o $(SAMEBOY_LIB)
