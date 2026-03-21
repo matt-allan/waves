@@ -7,3 +7,6 @@
 *.map
 *.noi
 test/test_basic
+build/
+vendor/cppp/cppp
+vendor/cppp/*.o
