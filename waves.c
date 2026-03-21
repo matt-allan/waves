@@ -260,14 +260,24 @@ void serial_isr(void)
 			rx.state = RX_NOTE_HI;
 		} else if (cmd == MCU_NOTE_OFF) {
 			note_off(proto_instr(byte));
-		} else if (proto_instr(byte) == INSTR_WAV &&
-			   cmd == WAV_SET_WAVE) {
-			rx.wave_idx = 0;
-			NR30_REG = 0x00;
-			rx.state = RX_WAVE;
-		} else {
-			rx.state = RX_VAL;
+		} else if (cmd >= CMD_CHAN_VOLUME && cmd <= PU1_SWEEP) {
+			/*
+			 * Param slots 2–26 all carry one value byte, except
+			 * WAV_SET_WAVE (slot 25 on WAV) which streams 16 bytes
+			 * of wave RAM.  Reserved slots 0–1 and 27–31 are
+			 * ignored so that idle-line 0xFF bytes (cmd=31) do not
+			 * corrupt the state machine.
+			 */
+			if (proto_instr(byte) == INSTR_WAV &&
+			    cmd == WAV_SET_WAVE) {
+				rx.wave_idx = 0;
+				NR30_REG = 0x00;
+				rx.state = RX_WAVE;
+			} else {
+				rx.state = RX_VAL;
+			}
 		}
+		/* unknown/reserved cmd: stay in RX_IDLE */
 		break;
 	case RX_NOTE_HI:
 		rx.period_hi = byte;
