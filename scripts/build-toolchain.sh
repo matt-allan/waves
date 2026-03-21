@@ -1,7 +1,6 @@
 #!/bin/sh
 # Build the GBDK-2020 toolchain and cppp from source.
 # Output goes to build/gbdk/ and vendor/cppp/cppp.
-# See docs/toolchain-setup.md for details.
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,5 +36,4 @@ make -C vendor/gbdk-2020 gbdk-install \
     BUILDDIR="$GBDK_BUILD"
 
 echo ""
-echo "Done. Build with:"
-echo "  GBDK_HOME=$GBDK_BUILD/ make"
+echo "Done."
