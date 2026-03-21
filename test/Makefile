@@ -1,10 +1,10 @@
 SAMEBOY_ROOT := ../vendor/SameBoy
 SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
-SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
+SAMEBOY_INC  := $(SAMEBOY_ROOT)/Core
 
 CC     := gcc
 CFLAGS := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -I.
-LDFLAGS := $(SAMEBOY_LIB) -lm
+LDFLAGS := -lm
 
 TESTS := test_basic
 

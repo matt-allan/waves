@@ -4,7 +4,7 @@
 #include "harness.h"
 #include "protocol.h"
 
-#include <sameboy/gb.h>
+#include <gb.h>
 
 #include <assert.h>
 #include <stdio.h>
