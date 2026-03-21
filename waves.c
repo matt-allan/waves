@@ -1,5 +1,6 @@
 #include "waves.h"
 #include "envelope.h"
+#include "protocol.h"
 #include <asm/types.h>
 #include <assert.h>
 #include <gb/gb.h>
@@ -15,6 +16,8 @@ uint8_t keys = 0;
 struct pulse1 PU1 = {.envelope = {0}};
 
 struct pulse2 PU2 = {.envelope = {0}};
+
+static struct rx_buf rx;
 
 struct wave WAV = {
     .wave = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
@@ -156,6 +159,160 @@ void wav_trigger(void)
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
+static void note_on(enum instrument instr, uint16_t period)
+{
+	switch (instr) {
+	case INSTR_PU1:
+		PU1.period = period;
+		envelope_on(&PU1.envelope, MAX_VOLUME);
+		pu1_update_env();
+		pu1_trigger();
+		break;
+	case INSTR_PU2:
+		PU2.period = period;
+		envelope_on(&PU2.envelope, MAX_VOLUME);
+		pu2_update_env();
+		pu2_trigger();
+		break;
+	case INSTR_WAV:
+		WAV.period = period;
+		wav_trigger();
+		break;
+	case INSTR_NOISE:
+		break;
+	}
+}
+
+static void note_off(enum instrument instr)
+{
+	switch (instr) {
+	case INSTR_PU1:
+		envelope_off(&PU1.envelope);
+		pu1_update_env();
+		pu1_trigger();
+		break;
+	case INSTR_PU2:
+		envelope_off(&PU2.envelope);
+		pu2_update_env();
+		pu2_trigger();
+		break;
+	case INSTR_WAV:
+		wav_set_volume(0);
+		break;
+	case INSTR_NOISE:
+		break;
+	}
+}
+
+static void set_param(enum instrument instr, uint8_t param_id, uint8_t value)
+{
+	if (instr == INSTR_WAV && param_id >= PARAM_WAVE_0 &&
+	    param_id < PARAM_WAVE_0 + 16) {
+		uint8_t i = param_id - PARAM_WAVE_0;
+		WAV.wave[i] = value;
+		NR30_REG = 0x00;
+		((unsigned char *)0xFF30)[i] = value;
+		NR30_REG = 0x80;
+		return;
+	}
+
+	switch (param_id) {
+	case PARAM_ATTACK:
+		if (instr == INSTR_PU1)
+			PU1.envelope.attack = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.attack = value;
+		break;
+	case PARAM_DECAY:
+		if (instr == INSTR_PU1)
+			PU1.envelope.decay = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.decay = value;
+		break;
+	case PARAM_SUSTAIN:
+		if (instr == INSTR_PU1)
+			PU1.envelope.sustain = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.sustain = value;
+		break;
+	case PARAM_RELEASE:
+		if (instr == INSTR_PU1)
+			PU1.envelope.release = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.release = value;
+		break;
+	case PARAM_DUTY_CYCLE:
+		if (instr == INSTR_PU1)
+			pu1_set_duty_cycle((enum duty_cycle)value);
+		else if (instr == INSTR_PU2)
+			pu2_set_duty_cycle((enum duty_cycle)value);
+		break;
+	case PARAM_SWEEP_PACE:
+		if (instr == INSTR_PU1) {
+			PU1.sweep.pace = value;
+			NR10_REG = (PU1.sweep.pace << 4) |
+				   (PU1.sweep.dir << 3) | PU1.sweep.step;
+		}
+		break;
+	case PARAM_SWEEP_DIR:
+		if (instr == INSTR_PU1) {
+			PU1.sweep.dir = (enum sweep_dir)value;
+			NR10_REG = (PU1.sweep.pace << 4) |
+				   (PU1.sweep.dir << 3) | PU1.sweep.step;
+		}
+		break;
+	case PARAM_SWEEP_STEP:
+		if (instr == INSTR_PU1) {
+			PU1.sweep.step = value;
+			NR10_REG = (PU1.sweep.pace << 4) |
+				   (PU1.sweep.dir << 3) | PU1.sweep.step;
+		}
+		break;
+	case PARAM_VOLUME:
+		if (instr == INSTR_WAV)
+			wav_set_volume(value);
+		break;
+	}
+}
+
+void serial_isr(void)
+{
+	uint8_t byte = SB_REG;
+
+	switch (rx.state) {
+	case RX_IDLE:
+		rx.hdr = byte;
+		switch (proto_cmd(byte)) {
+		case CMD_NOTE_ON:
+			rx.state = RX_NOTE_ON;
+			break;
+		case CMD_NOTE_OFF:
+			note_off(proto_instr(byte));
+			break;
+		case CMD_SET_PARAM:
+			rx.state = RX_PARAM_ID;
+			break;
+		}
+		break;
+	case RX_NOTE_ON:
+		note_on(proto_instr(rx.hdr),
+			((uint16_t)proto_data(rx.hdr) << 8) | byte);
+		rx.state = RX_IDLE;
+		break;
+	case RX_PARAM_ID:
+		rx.param_id = byte;
+		rx.state = RX_PARAM_VAL;
+		break;
+	case RX_PARAM_VAL:
+		set_param(proto_instr(rx.hdr), rx.param_id, byte);
+		rx.state = RX_IDLE;
+		break;
+	}
+
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+}
+
 void tim(void)
 {
 	uint8_t env_val;
@@ -176,10 +333,13 @@ void main(void)
 	CRITICAL
 	{
 		add_TIM(tim);
+		add_SIO(serial_isr);
 	}
 	timer_enable();
 	apu_enable();
-	set_interrupts(VBL_IFLAG | TIM_IFLAG);
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* start first transfer; use 0x80 for external MCU clock */
+	set_interrupts(VBL_IFLAG | TIM_IFLAG | SIO_IFLAG);
 	enable_interrupts();
 
 	PU1.period = 1046;

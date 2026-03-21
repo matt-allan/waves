@@ -15,7 +15,7 @@ SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
 SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
 
 TEST_CC      := gcc
-TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest
+TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest -I.
 TEST_LDFLAGS := -lm
 
 TESTS := test/test_basic
@@ -27,7 +27,7 @@ $(GAME).gb: waves.o envelope.o
 	$(CC) $(CFLAGS) -o $@ $^
 	$(ROMUSAGE) $(GAME).map
 
-waves.o: waves.c waves.h envelope.h
+waves.o: waves.c waves.h envelope.h protocol.h
 
 envelope.o: envelope.c envelope.h
 
@@ -56,7 +56,7 @@ $(SAMEBOY_LIB):
 test/harness.o: test/harness.c test/harness.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
-test/test_basic.o: test/test_basic.c test/harness.h | $(SAMEBOY_LIB)
+test/test_basic.o: test/test_basic.c test/harness.h protocol.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
 test/test_basic: test/test_basic.o test/harness.o $(SAMEBOY_LIB)

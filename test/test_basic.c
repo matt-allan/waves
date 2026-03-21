@@ -6,6 +6,7 @@
  *   SAMEBOY_BOOT_ROM  path to DMG boot ROM image (optional)
  */
 #include "harness.h"
+#include "protocol.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -77,22 +78,34 @@ static void test_screen_capture(const char *rom, const char *boot_rom)
 }
 
 /*
- * Enqueue a few raw bytes and run frames so the serial hardware has time
- * to clock them in.  Verifies the harness serial plumbing doesn't crash;
- * specific protocol framing is tested once the GB serial ISR is implemented.
+ * Send a NOTE_ON via the serial link and verify the APU produces non-silent
+ * audio.  PU1 at period 1046 (~C5).
  */
-static void test_serial_enqueue(const char *rom, const char *boot_rom)
+static void test_note_on(const char *rom, const char *boot_rom)
 {
 	struct harness *h = harness_new(rom, boot_rom);
 	assert(h != NULL);
 
-	harness_serial_enqueue(h, 0x01);
-	harness_serial_enqueue(h, 0x00);
-	harness_serial_enqueue(h, 0x04);
-	harness_serial_enqueue(h, 0x16);
+	harness_run_frames(h, 2);
 
-	/* Run enough frames to clock the bytes through at ~8192 baud */
+	/* NOTE_ON: PU1, period = 1046 */
+	harness_serial_enqueue(h, proto_header(INSTR_PU1, CMD_NOTE_ON, 1046 >> 8));
+	harness_serial_enqueue(h, 1046 & 0xFF);
+
 	harness_run_frames(h, 30);
+
+	GB_sample_t buf[HARNESS_AUDIO_BUF_LEN];
+	size_t n = harness_drain_audio(h, buf, HARNESS_AUDIO_BUF_LEN);
+	assert(n > 0);
+
+	bool non_silent = false;
+	for (size_t i = 0; i < n; i++) {
+		if (buf[i].left != 0 || buf[i].right != 0) {
+			non_silent = true;
+			break;
+		}
+	}
+	assert(non_silent);
 
 	harness_free(h);
 }
@@ -118,7 +131,7 @@ int main(void)
 	test_run_frames(rom, boot_rom);
 	test_audio_output(rom, boot_rom);
 	test_screen_capture(rom, boot_rom);
-	test_serial_enqueue(rom, boot_rom);
+	test_note_on(rom, boot_rom);
 
 	printf("ALL PASS\n");
 	return 0;
