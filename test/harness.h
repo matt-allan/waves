@@ -18,8 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* GB_sample_t is { int16_t left, right; } from SameBoy Core/gb.h */
-#include <gb.h>
+/* GB_sample_t is { int16_t left, right; } from <sameboy/gb.h> */
+#include <sameboy/gb.h>
 
 /* ---------------------------------------------------------------------- */
 /* Harness object                                                           */

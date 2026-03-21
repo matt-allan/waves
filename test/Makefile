@@ -1,6 +1,6 @@
 SAMEBOY_ROOT := ../vendor/SameBoy
 SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
-SAMEBOY_INC  := $(SAMEBOY_ROOT)/Core
+SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
 
 CC     := gcc
 CFLAGS := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -I.
