@@ -101,6 +101,8 @@ bool envelope_next(struct envelope *env)
 		envelope_end(env);
 		return false;
 	}
+	/* All switch arms return; this silences the "must return value" warning. */
+	return false;
 }
 
 bool envelope_tick(struct envelope *env)

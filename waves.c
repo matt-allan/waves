@@ -308,8 +308,6 @@ void serial_isr(void)
 
 void tim(void)
 {
-	uint8_t env_val;
-
 	if (envelope_tick(&PU1.envelope)) {
 		pu1_update_env();
 		pu1_trigger();
