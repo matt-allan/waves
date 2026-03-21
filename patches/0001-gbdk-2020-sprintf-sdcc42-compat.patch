@@ -1,0 +1,33 @@
+From c6c73bdf1e207073a352ff535daeede11a21619c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 21 Mar 2026 00:33:02 +0000
+Subject: [PATCH] Fix sprintf.c case 'c' declaration for SDCC 4.2 compatibility
+
+SDCC 4.2 does not allow variable declarations directly inside a
+switch case without a block. Wrap the char c declaration in braces.
+
+https://claude.ai/code/session_013xwi5LAHTBrUYFYp1pYiBT
+---
+ gbdk-lib/libc/sprintf.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/gbdk-lib/libc/sprintf.c b/gbdk-lib/libc/sprintf.c
+index 034d0afc..a9d93a38 100644
+--- a/gbdk-lib/libc/sprintf.c
++++ b/gbdk-lib/libc/sprintf.c
+@@ -71,10 +71,11 @@ void __printf(const char *format, emitter_t emitter, char **pData, va_list va)
+                 case 's': 
+                     _printbuf(va_arg(va, char *), emitter, pData);
+                     break;
+-                case 'c': 
++                case 'c': {
+                     char c = va_arg(va, char);
+                     (*emitter)(c, pData);
+                     break;
++                }
+                 case 'X':
+                 case 'x':
+                     _printhex(va_arg(va, int), emitter, pData);
+-- 
+2.43.0
+

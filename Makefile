@@ -1,6 +1,4 @@
-ifndef GBDK_HOME
-	GBDK_HOME = /opt/gbdk/
-endif
+GBDK_HOME ?= build/gbdk/
 
 CC := $(GBDK_HOME)bin/lcc
 ROMUSAGE := $(GBDK_HOME)bin/romusage
@@ -35,3 +33,11 @@ clean:
 .PHONY: run
 run:
 	sameboy $(GAME).gb
+
+vendor/SameBoy/.git:
+	git submodule update --init vendor/SameBoy
+
+.PHONY: test
+test: $(GAME).gb vendor/SameBoy/.git
+	$(MAKE) -C test
+	cd test && ./test_basic
