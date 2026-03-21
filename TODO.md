@@ -15,15 +15,6 @@
 - [ ] Noise channel — implement `struct noise`, `noise_trigger`, `noise_update_env`
       using NR41–NR44 registers
 - [ ] Wire PU2 and WAV back into the timer ISR and main loop (currently commented out)
-- [ ] Remove frequency table from `waves.h` — GB receives periods from MCU directly;
-      replace with `MIDDLE_C_PERIOD 1046` constant for preview mode
-
-## Preview / standalone mode
-
-- [ ] Refactor hardcoded test values out of `main()` into a proper preview path
-- [ ] Select held → note-on at `MIDDLE_C_PERIOD` on current instrument;
-      Select released → note-off
-- [ ] Stub for MCU detection — if no MCU connected on boot, enter standalone mode
 
 ## Serial protocol
 
