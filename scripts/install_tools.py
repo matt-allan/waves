@@ -53,10 +53,6 @@ def download(url, dest):
 def install_gbdk():
     """Download and extract GBDK into tools/gbdk/."""
     gbdk_dir = os.path.join(TOOLS_DIR, "gbdk")
-    if os.path.isdir(gbdk_dir):
-        print(f"GBDK already installed at {gbdk_dir}, skipping.")
-        return
-
     asset = detect_gbdk_asset()
     url = f"{GBDK_BASE_URL}/{asset}"
 
@@ -78,6 +74,8 @@ def install_gbdk():
             sys.exit(f"Expected extracted directory {extracted} not found")
 
         os.makedirs(TOOLS_DIR, exist_ok=True)
+        if os.path.isdir(gbdk_dir):
+            shutil.rmtree(gbdk_dir)
         shutil.move(extracted, gbdk_dir)
 
     print(f"GBDK {GBDK_VERSION} installed to {gbdk_dir}")
@@ -100,7 +98,7 @@ def install_cppp():
 
         src_dir = os.path.join(tmp, f"cppp-{CPPP_COMMIT}")
 
-        cc = "clang" if shutil.which("clang") else "cc"
+        cc = "clang" if shutil.which("clang") else "gcc"
         print(f"  Building cppp with {cc}")
         subprocess.check_call(["make", "-C", src_dir, f"CC={cc}"])
 
