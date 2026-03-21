@@ -48,10 +48,19 @@ jobs:
           key: sameboy-${{ steps.submodule-shas.outputs.sameboy }}
 
       - name: Build SameBoy lib
+        if: steps.cache-sameboy.outputs.cache-hit != 'true'
+        run: PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers lib CONF=release
+
+      - name: Validate SameBoy headers
         run: |
-          rm -rf vendor/SameBoy/build/include/sameboy
-          PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers lib CONF=release
-          grep -q "GB_sample_t" vendor/SameBoy/build/include/sameboy/apu.h
+          HEADER_PATH="vendor/SameBoy/build/include/sameboy/apu.h"
+          SAMPLE_TYPE="GB_sample_t"
+
+          if [ ! -f "$HEADER_PATH" ] || ! grep -q "$SAMPLE_TYPE" "$HEADER_PATH"; then
+            rm -rf vendor/SameBoy/build/include/sameboy
+            PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers CONF=release
+          fi
+          grep -q "$SAMPLE_TYPE" "$HEADER_PATH"
 
       - name: Build and run tests
         run: make test
