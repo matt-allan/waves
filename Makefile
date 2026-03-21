@@ -14,12 +14,13 @@ SAMEBOY_ROOT := vendor/SameBoy
 SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
 SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
 
-TEST_CC     := gcc
-TEST_CFLAGS := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest
+TEST_CC      := gcc
+TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest
 TEST_LDFLAGS := -lm
 
 TESTS := test/test_basic
 
+.PHONY: all
 all: $(GAME).gb
 
 $(GAME).gb: waves.o envelope.o
