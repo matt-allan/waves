@@ -49,10 +49,7 @@ run:
 test: $(GAME).gb $(TESTS)
 	WAVES_ROM=$(GAME).gb test/test_basic
 
-vendor/SameBoy/.git:
-	git submodule update --init vendor/SameBoy
-
-$(SAMEBOY_LIB): vendor/SameBoy/.git
+$(SAMEBOY_LIB):
 	PATH="$(abspath vendor/cppp):$$PATH" $(MAKE) -C $(SAMEBOY_ROOT) headers lib CONF=release
 
 test/harness.o: test/harness.c test/harness.h
