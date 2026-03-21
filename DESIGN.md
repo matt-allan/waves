@@ -81,21 +81,98 @@ both on MIDI channel 1 gives two-voice polyphony).
 
 ## Serial Protocol
 
-Bidirectional over the Game Boy link port.
+Bidirectional over the Game Boy link port at ~8192 baud.
 
-| Direction | Messages |
-|-----------|----------|
-| MCU → GB | Patch load (on boot), note-on (channel + period), note-off (channel), CC param update |
-| GB → MCU | Patch save (user-initiated) |
+### Header byte
 
-Note-on includes the period (frequency) pre-computed by the MCU. The GB does not
-need a note-to-period lookup table.
+Every message starts with one header byte:
 
-**Patch edits are local until saved.** The GB applies parameter changes
-immediately for zero-latency feel. When the user explicitly saves the patch
-(dedicated save action in the editor), the full patch is sent to the MCU for
-persistent storage. The MCU does not ack; if the link drops the GB keeps making
-sound.
+```
+  7   6   5   4   3   2   1   0
+[ II  II  CCC CCC DDD DDD DDD ]
+```
+
+- **II** (bits 7–6) — instrument: 0=PU1, 1=PU2, 2=WAV, 3=NOISE
+- **CCC** (bits 5–3) — command (see table below)
+- **DDD** (bits 2–0) — inline data; only used by NOTE_ON (carries `period[10:8]`),
+  zero for all other commands
+
+Decoding in the ISR is three cheap bit operations with no memory access:
+
+```c
+enum instrument instr = hdr >> 6;
+enum cmd        cmd   = (hdr >> 3) & 7;
+uint8_t         data  = hdr & 7;
+```
+
+### Commands
+
+| CCC | Name | Dir | Extra bytes | Notes |
+|-----|------|-----|-------------|-------|
+| 0 | NOTE_ON | MCU→GB | period[7:0] | DDD = period[10:8]; NOISE: DDD=0, byte = NR43 |
+| 1 | NOTE_OFF | MCU→GB | — | |
+| 2 | SET_PARAM | both | param_id, value | patch update; used both directions |
+| 3 | HANDSHAKE | both | — | MCU sends first; GB echoes as ACK |
+| 4 | MIDI_ASSIGN | GB→MCU | midi_channel | sent immediately on user change |
+
+5–7 reserved.
+
+NOTE_ON is two bytes total; all other commands are one or three bytes.
+The MCU pre-computes the 11-bit APU period (or NR43 for NOISE) from the MIDI
+note number — the GB never touches a lookup table.
+
+### Patch parameters (SET_PARAM payload)
+
+| param_id | Name | Range | Applies to |
+|----------|------|-------|-----------|
+| 0 | ATTACK | 1–7 | all |
+| 1 | DECAY | 1–7 | all |
+| 2 | SUSTAIN | 0–15 | all (absolute volume level) |
+| 3 | RELEASE | 1–7 | all |
+| 4 | DUTY_CYCLE | 0–3 | PU1, PU2 |
+| 5 | SWEEP_PACE | 0–7 | PU1 (0 = off) |
+| 6 | SWEEP_DIR | 0–1 | PU1 |
+| 7 | SWEEP_STEP | 0–7 | PU1 |
+| 8 | VOLUME | 0–3 WAV, 0–15 NOISE | WAV, NOISE |
+| 9–24 | WAVE_0–WAVE_15 | 0–255 | WAV wave RAM bytes |
+| 25 | NOISE_DIV | 0–7 | NOISE (NR43 bits 2:0) |
+| 26 | NOISE_WIDTH | 0–1 | NOISE (NR43 bit 3: 0=15-bit LFSR, 1=7-bit) |
+| 27 | CHAN_VOLUME | 0–7 | mixer per-instrument |
+| 28 | CHAN_PAN | 0–2 | mixer (0=L, 1=both, 2=R) |
+
+### Boot sequence
+
+```
+MCU                              GB
+ |--- HANDSHAKE (1 byte) ------->|  MCU announces link
+ |<-- HANDSHAKE (1 byte) --------|  GB echoes as ACK
+ |                                |
+ |--- SET_PARAM × N ------------>|  all 4 patches streamed as individual
+ |                                |  param messages, instrument 0–3
+ |         [NOTE_ON when ready]   |  GB applies params as they arrive;
+ |                                |  sound is live from HANDSHAKE
+```
+
+**Standalone fallback:** if HANDSHAKE is not received within ~500 ms of boot
+(approximately 30 VBL frames), the GB loads hardcoded default patches and
+enters standalone mode. The serial ISR stays active; a late HANDSHAKE will
+sync the patches.
+
+### Runtime — MCU → GB
+
+The MCU performs all MIDI parsing and voice allocation. When a MIDI note-on
+arrives it selects an instrument, computes the APU period, and sends NOTE_ON.
+CC messages map to param_id values and arrive as SET_PARAM.
+
+### Runtime — GB → MCU
+
+**Patch edits are local until saved.** Parameter changes made via the joypad
+editor are applied immediately (zero-latency). When the user explicitly saves,
+the GB sends one SET_PARAM per parameter for the full patch. The MCU stores it
+persistently. No ACK; if the link drops the GB keeps making sound.
+
+MIDI channel assignments changed in the UI are sent immediately as MIDI_ASSIGN
+so the MCU can update its routing table without waiting for a save.
 
 ## UI
 
