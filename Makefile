@@ -53,10 +53,10 @@ test: $(GAME).gb $(TESTS)
 $(SAMEBOY_LIB):
 	PATH="$(abspath vendor/cppp):$$PATH" $(MAKE) -C $(SAMEBOY_ROOT) headers lib CONF=release
 
-test/harness.o: test/harness.c test/harness.h
+test/harness.o: test/harness.c test/harness.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
-test/test_basic.o: test/test_basic.c test/harness.h
+test/test_basic.o: test/test_basic.c test/harness.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
 test/test_basic: test/test_basic.o test/harness.o $(SAMEBOY_LIB)
