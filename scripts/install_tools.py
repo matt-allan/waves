@@ -16,7 +16,8 @@ GBDK_BASE_URL = (
     f"https://github.com/gbdk-2020/gbdk-2020/releases/download/{GBDK_VERSION}"
 )
 
-CPPP_REPO = "https://github.com/LIJI32/cppp.git"
+CPPP_COMMIT = "698b848f7ea38551a95d13b415629472a9c17d6b"
+CPPP_ZIP_URL = f"https://github.com/LIJI32/cppp/archive/{CPPP_COMMIT}.zip"
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TOOLS_DIR = os.path.join(REPO_ROOT, "tools")
@@ -83,35 +84,28 @@ def install_gbdk():
 
 
 def install_cppp():
-    """Clone and build cppp into tools/cppp."""
+    """Download, build, and install cppp into tools/cppp."""
     cppp_bin = os.path.join(TOOLS_DIR, "cppp")
     if os.path.isfile(cppp_bin):
         print(f"cppp already installed at {cppp_bin}, skipping.")
         return
 
-    # Prefer building from the vendored submodule if present
-    vendor_dir = os.path.join(REPO_ROOT, "vendor", "cppp")
-    if os.path.isfile(os.path.join(vendor_dir, "Makefile")):
-        src_dir = vendor_dir
-        cloned_tmp = None
-    else:
-        # Fall back to a fresh clone
-        cloned_tmp = tempfile.mkdtemp()
-        src_dir = os.path.join(cloned_tmp, "cppp")
-        print(f"  Cloning {CPPP_REPO}")
-        subprocess.check_call(["git", "clone", "--depth", "1", CPPP_REPO, src_dir])
+    with tempfile.TemporaryDirectory() as tmp:
+        archive_path = os.path.join(tmp, "cppp.zip")
+        download(CPPP_ZIP_URL, archive_path)
 
-    # Pick a compiler
-    cc = "clang" if shutil.which("clang") else "cc"
+        print("  Extracting...")
+        with zipfile.ZipFile(archive_path, "r") as zf:
+            zf.extractall(tmp)
 
-    print(f"  Building cppp with {cc}")
-    subprocess.check_call(["make", "-C", src_dir, f"CC={cc}"])
+        src_dir = os.path.join(tmp, f"cppp-{CPPP_COMMIT}")
 
-    os.makedirs(TOOLS_DIR, exist_ok=True)
-    shutil.copy2(os.path.join(src_dir, "cppp"), cppp_bin)
+        cc = "clang" if shutil.which("clang") else "cc"
+        print(f"  Building cppp with {cc}")
+        subprocess.check_call(["make", "-C", src_dir, f"CC={cc}"])
 
-    if cloned_tmp:
-        shutil.rmtree(cloned_tmp, ignore_errors=True)
+        os.makedirs(TOOLS_DIR, exist_ok=True)
+        shutil.copy2(os.path.join(src_dir, "cppp"), cppp_bin)
 
     print(f"cppp installed to {cppp_bin}")
 
