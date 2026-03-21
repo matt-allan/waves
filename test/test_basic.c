@@ -89,7 +89,8 @@ static void test_note_on(const char *rom, const char *boot_rom)
 	harness_run_frames(h, 2);
 
 	/* NOTE_ON: PU1, period = 1046 */
-	harness_serial_enqueue(h, proto_header(INSTR_PU1, CMD_NOTE_ON, 1046 >> 8));
+	harness_serial_enqueue(h, proto_instr_hdr(INSTR_PU1, CMD_NOTE_ON));
+	harness_serial_enqueue(h, 1046 >> 8);
 	harness_serial_enqueue(h, 1046 & 0xFF);
 
 	harness_run_frames(h, 30);
