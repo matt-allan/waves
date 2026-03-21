@@ -6,10 +6,7 @@
 #include "envelope.h"
 
 /**
- * APU period values for notes C3–B8.
- *
- * Used for testing and MCU reference. The MCU pre-computes periods and sends
- * them in NOTE_ON; the GB does not use this table at runtime.
+ * Covers notes from C3 to B8.
  *
  * @see http://www.devrs.com/gb/files/sndtab.html
  */
