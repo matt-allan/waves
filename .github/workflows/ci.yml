@@ -48,8 +48,10 @@ jobs:
           key: sameboy-${{ steps.submodule-shas.outputs.sameboy }}
 
       - name: Build SameBoy lib
-        if: steps.cache-sameboy.outputs.cache-hit != 'true'
-        run: make -C vendor/SameBoy lib CONF=release
+        run: |
+          rm -rf vendor/SameBoy/build/include/sameboy
+          PATH="$GITHUB_WORKSPACE/vendor/cppp:$PATH" make -C vendor/SameBoy headers lib CONF=release
+          grep -q "GB_sample_t" vendor/SameBoy/build/include/sameboy/apu.h
 
       - name: Build and run tests
         run: make test
