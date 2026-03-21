@@ -17,7 +17,7 @@ GBDK_BASE_URL = (
 )
 
 CPPP_COMMIT = "698b848f7ea38551a95d13b415629472a9c17d6b"
-CPPP_ZIP_URL = f"https://github.com/LIJI32/cppp/archive/{CPPP_COMMIT}.zip"
+CPPP_ZIP_URL = f"https://github.com/BR903/cppp/archive/{CPPP_COMMIT}.zip"
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TOOLS_DIR = os.path.join(REPO_ROOT, "tools")
