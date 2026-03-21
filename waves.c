@@ -159,44 +159,49 @@ void wav_trigger(void)
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
-/*
- * instr_mask is a bitmask for PU1/PU2 (INSTR_PU1|INSTR_PU2 = 0b11 triggers
- * both channels with the same period).  WAV is addressed by value 0b00.
- */
-static void note_on(enum instrument instr_mask, uint16_t period)
+static void note_on(enum instrument instr, uint16_t period)
 {
-	if (instr_mask & INSTR_PU1) {
+	switch (instr) {
+	case INSTR_PU1:
 		PU1.period = period;
 		envelope_on(&PU1.envelope, MAX_VOLUME);
 		pu1_update_env();
 		pu1_trigger();
-	}
-	if (instr_mask & INSTR_PU2) {
+		break;
+	case INSTR_PU2:
 		PU2.period = period;
 		envelope_on(&PU2.envelope, MAX_VOLUME);
 		pu2_update_env();
 		pu2_trigger();
-	}
-	if (instr_mask == INSTR_WAV) {
+		break;
+	case INSTR_WAV:
 		WAV.period = period;
 		wav_trigger();
+		break;
+	case INSTR_NOISE:
+		break;
 	}
 }
 
-static void note_off(enum instrument instr_mask)
+static void note_off(enum instrument instr)
 {
-	if (instr_mask & INSTR_PU1) {
+	switch (instr) {
+	case INSTR_PU1:
 		envelope_off(&PU1.envelope);
 		pu1_update_env();
 		pu1_trigger();
-	}
-	if (instr_mask & INSTR_PU2) {
+		break;
+	case INSTR_PU2:
 		envelope_off(&PU2.envelope);
 		pu2_update_env();
 		pu2_trigger();
-	}
-	if (instr_mask == INSTR_WAV)
+		break;
+	case INSTR_WAV:
 		wav_set_volume(0);
+		break;
+	case INSTR_NOISE:
+		break;
+	}
 }
 
 static void set_param(enum instrument instr, uint8_t param_id, uint8_t value)
