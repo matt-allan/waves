@@ -6,7 +6,9 @@
  *   7   6   5   4   3   2   1   0
  *  [II  II  CCC CCC DDD DDD DDD]
  *
- *  II  (bits 7:6) — instrument index (0=PU1, 1=PU2, 2=WAV, 3=NOISE)
+ *  II  (bits 7:6) — instrument selector.  See enum instrument above.
+ *                   For NOTE_ON/NOTE_OFF: bitmask (bit7=PU2, bit6=PU1).
+ *                   For SET_PARAM: exactly one channel.
  *  CCC (bits 5:3) — command
  *  DDD (bits 2:0) — inline data (command-specific; 0 unless noted)
  *
@@ -24,11 +26,23 @@
 /* Instruments                                                              */
 /* ---------------------------------------------------------------------- */
 
+/*
+ * For NOTE_ON and NOTE_OFF the II field is a bitmask: bit 6 = PU1, bit 7 =
+ * PU2.  Setting both bits addresses both pulse channels simultaneously, which
+ * lets the MCU trigger a unison note in a single 2-byte message.
+ *
+ * WAV is addressed by II = 0b00 (neither PU bit set).
+ *
+ * For SET_PARAM exactly one channel must be targeted, so only the single-
+ * channel values below are valid in that command.
+ *
+ * NOISE is not yet assigned; the channel is not implemented.
+ */
 enum instrument {
-	INSTR_PU1   = 0,
-	INSTR_PU2   = 1,
-	INSTR_WAV   = 2,
-	INSTR_NOISE = 3,
+	INSTR_WAV = 0, /* 0b00 — addressed by value, not a bitmask bit */
+	INSTR_PU1 = 1, /* 0b01 — bitmask bit 0                         */
+	INSTR_PU2 = 2, /* 0b10 — bitmask bit 1                         */
+	/* INSTR_NOISE — TBD; NOISE channel not yet implemented */
 };
 
 /* ---------------------------------------------------------------------- */
