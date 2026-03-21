@@ -1,4 +1,4 @@
-GBDK_HOME ?= build/gbdk/
+GBDK_HOME ?= tools/gbdk/
 
 CC       := $(GBDK_HOME)bin/lcc
 ROMUSAGE := $(GBDK_HOME)bin/romusage
@@ -51,7 +51,7 @@ test: $(GAME).gb $(TESTS)
 	WAVES_ROM=$(GAME).gb test/test_basic
 
 $(SAMEBOY_LIB):
-	PATH="$(abspath vendor/cppp):$$PATH" $(MAKE) -C $(SAMEBOY_ROOT) headers lib CONF=release
+	PATH="$(abspath tools):$$PATH" $(MAKE) -C $(SAMEBOY_ROOT) headers lib CONF=release
 
 test/harness.o: test/harness.c test/harness.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
