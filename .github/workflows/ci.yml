@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y sdcc gcc g++ clang cmake libpng-dev
+
+      - name: Build toolchain
+        run: ./scripts/build-toolchain.sh
+
+      - name: Build ROM
+        run: make
+
+      - name: Build SameBoy lib
+        run: make -C vendor/SameBoy lib CONF=release
+
+      - name: Build and run tests
+        run: make test
