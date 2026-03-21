@@ -45,8 +45,7 @@ changes. The configuration is:
 - No short if-statements or functions on a single line
 
 The source files in `src/` (i.e. `waves.c`, `envelope.c`, and their headers)
-are the style reference. The test harness in `test/` predates some of these
-conventions and should not be used as a guide.
+are the style reference.
 
 ### Naming
 
