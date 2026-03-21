@@ -153,10 +153,8 @@ MCU                              GB
  |                                |  sound is live from HANDSHAKE
 ```
 
-**Standalone fallback:** if HANDSHAKE is not received within ~500 ms of boot
-(approximately 30 VBL frames), the GB loads hardcoded default patches and
-enters standalone mode. The serial ISR stays active; a late HANDSHAKE will
-sync the patches.
+The GB sits idle until HANDSHAKE arrives. There is no standalone mode — the
+MCU is the only source of notes so the GB has nothing to do without it.
 
 ### Runtime — MCU → GB
 

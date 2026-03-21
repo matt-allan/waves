@@ -79,8 +79,8 @@ enum cmd {
 	 *   No payload.
 	 *
 	 * MCU sends HANDSHAKE first.  GB responds with the same byte as an ACK.
-	 * The GB starts a timeout on boot; if HANDSHAKE is not received within
-	 * ~500 ms it enters standalone mode with default patches.
+	 * Until HANDSHAKE is received the GB sits idle; the MCU is the only
+	 * source of notes so there is nothing to do without it.
 	 */
 	CMD_HANDSHAKE = 3,
 
