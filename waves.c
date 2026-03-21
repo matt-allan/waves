@@ -204,61 +204,73 @@ static void note_off(enum instrument instr)
 	}
 }
 
-static void set_param(enum instrument instr, uint8_t cmd, uint8_t value)
+static void set_param(enum instrument instr, uint8_t param_id, uint8_t value)
 {
-	switch (cmd) {
-	case 5: /* PU1_ATTACK / PU2_ATTACK / WAV_VOLUME */
+	if (instr == INSTR_WAV && param_id >= MCU_PARAM_WAVE_0 &&
+	    param_id < MCU_PARAM_WAVE_0 + 16) {
+		uint8_t i = param_id - MCU_PARAM_WAVE_0;
+		WAV.wave[i] = value;
+		NR30_REG = 0x00;
+		((unsigned char *)0xFF30)[i] = value;
+		NR30_REG = 0x80;
+		return;
+	}
+
+	switch (param_id) {
+	case MCU_PARAM_ATTACK:
 		if (instr == INSTR_PU1)
 			PU1.envelope.attack = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.attack = value;
-		else if (instr == INSTR_WAV)
-			wav_set_volume(value);
 		break;
-	case 6: /* PU1_DECAY / PU2_DECAY */
+	case MCU_PARAM_DECAY:
 		if (instr == INSTR_PU1)
 			PU1.envelope.decay = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.decay = value;
 		break;
-	case 7: /* PU1_SUSTAIN / PU2_SUSTAIN */
+	case MCU_PARAM_SUSTAIN:
 		if (instr == INSTR_PU1)
 			PU1.envelope.sustain = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.sustain = value;
 		break;
-	case 8: /* PU1_RELEASE / PU2_RELEASE */
+	case MCU_PARAM_RELEASE:
 		if (instr == INSTR_PU1)
 			PU1.envelope.release = value;
 		else if (instr == INSTR_PU2)
 			PU2.envelope.release = value;
 		break;
-	case 9: /* PU1_DUTY_CYCLE / PU2_DUTY_CYCLE */
+	case MCU_PARAM_DUTY_CYCLE:
 		if (instr == INSTR_PU1)
 			pu1_set_duty_cycle((enum duty_cycle)value);
 		else if (instr == INSTR_PU2)
 			pu2_set_duty_cycle((enum duty_cycle)value);
 		break;
-	case 10: /* PU1_SWEEP_PACE */
+	case MCU_PARAM_SWEEP_PACE:
 		if (instr == INSTR_PU1) {
 			PU1.sweep.pace = value;
 			NR10_REG = (PU1.sweep.pace << 4) |
 				   (PU1.sweep.dir << 3) | PU1.sweep.step;
 		}
 		break;
-	case 11: /* PU1_SWEEP_DIR */
+	case MCU_PARAM_SWEEP_DIR:
 		if (instr == INSTR_PU1) {
 			PU1.sweep.dir = (enum sweep_dir)value;
 			NR10_REG = (PU1.sweep.pace << 4) |
 				   (PU1.sweep.dir << 3) | PU1.sweep.step;
 		}
 		break;
-	case 12: /* PU1_SWEEP_STEP */
+	case MCU_PARAM_SWEEP_STEP:
 		if (instr == INSTR_PU1) {
 			PU1.sweep.step = value;
 			NR10_REG = (PU1.sweep.pace << 4) |
 				   (PU1.sweep.dir << 3) | PU1.sweep.step;
 		}
+		break;
+	case MCU_PARAM_VOLUME:
+		if (instr == INSTR_WAV)
+			wav_set_volume(value);
 		break;
 	}
 }
@@ -266,45 +278,34 @@ static void set_param(enum instrument instr, uint8_t cmd, uint8_t value)
 void serial_isr(void)
 {
 	uint8_t byte = SB_REG;
-	uint8_t cmd;
 
 	switch (rx.state) {
 	case RX_IDLE:
 		rx.hdr = byte;
-		cmd = proto_cmd(byte);
-		if (cmd == CMD_NOTE_ON) {
-			rx.state = RX_NOTE_HI;
-		} else if (cmd == CMD_NOTE_OFF) {
-			note_off(proto_instr(byte));
-		} else if (proto_instr(byte) == INSTR_WAV &&
-			   cmd == WAV_SET_WAVE) {
-			rx.wave_idx = 0;
-			NR30_REG = 0x00; /* disable wave channel for transfer */
-			rx.state = RX_WAVE;
-		} else {
-			rx.state = RX_VAL;
+		switch (mcu_hdr_cmd(byte)) {
+		case MCU_NOTE_ON:
+			rx.state = RX_NOTE_ON;
+			break;
+		case MCU_NOTE_OFF:
+			note_off(mcu_hdr_instr(byte));
+			break;
+		case MCU_SET_PARAM:
+			rx.state = RX_PARAM_ID;
+			break;
 		}
 		break;
-	case RX_NOTE_HI:
-		rx.period_hi = byte;
-		rx.state = RX_NOTE_LO;
-		break;
-	case RX_NOTE_LO:
-		note_on(proto_instr(rx.hdr),
-			((uint16_t)(rx.period_hi & 0x07) << 8) | byte);
+	case RX_NOTE_ON:
+		note_on(mcu_hdr_instr(rx.hdr),
+			((uint16_t)mcu_hdr_data(rx.hdr) << 8) | byte);
 		rx.state = RX_IDLE;
 		break;
-	case RX_VAL:
-		set_param(proto_instr(rx.hdr), proto_cmd(rx.hdr), byte);
-		rx.state = RX_IDLE;
+	case RX_PARAM_ID:
+		rx.param_id = byte;
+		rx.state = RX_PARAM_VAL;
 		break;
-	case RX_WAVE:
-		WAV.wave[rx.wave_idx] = byte;
-		((unsigned char *)0xFF30)[rx.wave_idx] = byte;
-		if (++rx.wave_idx == 16) {
-			NR30_REG = 0x80;
-			rx.state = RX_IDLE;
-		}
+	case RX_PARAM_VAL:
+		set_param(mcu_hdr_instr(rx.hdr), rx.param_id, byte);
+		rx.state = RX_IDLE;
 		break;
 	}
 

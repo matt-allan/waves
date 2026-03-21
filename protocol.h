@@ -1,27 +1,31 @@
 /*
  * protocol.h — wire protocol for the Game Boy ↔ MCU link port serial connection.
  *
- * Every message starts with a header byte:
+ * The two directions use different header formats.
+ *
+ * MCU → GB header byte:
+ *
+ *   7   6   5   4   3   2   1   0
+ *  [II  II  CCC CCC DDD DDD DDD]
+ *
+ *  II  (bits 7:6) — instrument index (0=PU1, 1=PU2, 2=WAV, 3=NOISE)
+ *  CCC (bits 5:3) — command
+ *  DDD (bits 2:0) — inline data (command-specific; 0 unless noted)
+ *
+ * For NOTE_ON, DDD carries period[10:8] so the full note event fits in
+ * 2 bytes rather than 3.  For all other commands DDD is reserved (0).
+ *
+ * GB → MCU header byte:
  *
  *   7   6   5   4   3   2   1   0
  *  [V   II  II  CC  CC  CC  CC  CC]
  *
  *  V  (bit 7)    — 0 = instrument-specific, 1 = global (TBD)
  *  II (bits 6:5) — instrument (when V=0): 0=PU1, 1=PU2, 2=WAV, 3=NOISE
- *  CC (bits 4:0) — command
+ *  CC (bits 4:0) — command (instrument-specific namespace)
  *
  * Commands 0–4 are common to every instrument (same meaning, same ID).
  * Commands 5+ are instrument-specific.
- *
- * Payload following the header:
- *   - Most commands: one value byte.
- *   - PATCH_SAVE, PATCH_LOAD: one patch number byte.
- *   - WAV_SET_WAVE: 16 wave RAM bytes.
- *
- * Direction:
- *   GB  → MCU: instrument commands (params, patch save/load)
- *   MCU → GB:  instrument commands (param updates, patch load responses)
- *              + note events (reserved high command slots, TBD)
  *
  * This file is plain C99 and is shared by the GB ROM (SDCC) and the MCU side.
  */
@@ -42,24 +46,110 @@ enum instrument {
 };
 
 /* ---------------------------------------------------------------------- */
-/* Common instrument commands (IDs 0–4, identical across all instruments)  */
+/* MCU → GB commands                                                       */
 /* ---------------------------------------------------------------------- */
 
+enum mcu_cmd {
+	/*
+	 * NOTE_ON — trigger a note on the given instrument.
+	 *   Header: [II 000 PPP]  where PPP = period[10:8]
+	 *   Byte 1: period[7:0]
+	 *
+	 * For INSTR_NOISE, period[10:8] is unused (set to 0) and byte 1 is
+	 * the raw NR43 value.  The MCU pre-computes NR43 from the MIDI note.
+	 */
+	MCU_NOTE_ON  = 0,
+
+	/*
+	 * NOTE_OFF — release the note on the given instrument.
+	 *   Header: [II 001 000]
+	 *   No payload.
+	 */
+	MCU_NOTE_OFF = 1,
+
+	/*
+	 * SET_PARAM — update one patch parameter.
+	 *   Header: [II 010 000]
+	 *   Byte 1: param_id  (enum mcu_param)
+	 *   Byte 2: value
+	 *
+	 * Streams the full patch state on boot and forwards MIDI CC updates
+	 * at runtime.
+	 */
+	MCU_SET_PARAM = 2,
+
+	/* 3–7 reserved */
+};
+
+/*
+ * MCU → GB param IDs (byte 1 of SET_PARAM payload).
+ * These use a flat global namespace; the instrument from the header
+ * disambiguates where the same ID is shared (e.g. ATTACK).
+ */
+enum mcu_param {
+	MCU_PARAM_ATTACK      = 0,  /* envelope attack pace 1–7             */
+	MCU_PARAM_DECAY       = 1,  /* envelope decay pace 1–7              */
+	MCU_PARAM_SUSTAIN     = 2,  /* sustain volume level 0–15            */
+	MCU_PARAM_RELEASE     = 3,  /* envelope release pace 1–7            */
+	MCU_PARAM_DUTY_CYCLE  = 4,  /* duty cycle 0–3; PU1, PU2            */
+	MCU_PARAM_SWEEP_PACE  = 5,  /* sweep pace 0–7 (0=off); PU1         */
+	MCU_PARAM_SWEEP_DIR   = 6,  /* sweep dir 0=up 1=down; PU1          */
+	MCU_PARAM_SWEEP_STEP  = 7,  /* sweep step magnitude 0–7; PU1       */
+	MCU_PARAM_VOLUME      = 8,  /* output volume: 0–3 WAV, 0–15 NOISE  */
+	MCU_PARAM_WAVE_0      = 9,  /* WAV wave RAM byte 0 (bytes 1–15: +i) */
+	/* MCU_PARAM_WAVE_1 through MCU_PARAM_WAVE_15 occupy IDs 10–24     */
+	MCU_PARAM_NOISE_DIV   = 25, /* NR43 bits 2:0 — clock divider 0–7   */
+	MCU_PARAM_NOISE_WIDTH = 26, /* NR43 bit 3 — LFSR: 0=15-bit, 1=7-bit */
+	MCU_PARAM_CHAN_VOLUME  = 27, /* mixer output volume 0–7             */
+	MCU_PARAM_CHAN_PAN    = 28, /* pan: 0=left, 1=both, 2=right         */
+	MCU_PARAM_MIDI_CHANNEL = 29, /* MIDI channel assignment 0–15        */
+};
+
+/* ---------------------------------------------------------------------- */
+/* MCU → GB header helpers                                                 */
+/* ---------------------------------------------------------------------- */
+
+/** Build a MCU → GB header byte. */
+static inline uint8_t mcu_hdr(enum instrument instr, enum mcu_cmd cmd,
+			       uint8_t data)
+{
+	return ((uint8_t)instr << 6) | ((uint8_t)cmd << 3) | (data & 0x07);
+}
+
+/** Extract instrument from a MCU → GB header byte. */
+static inline enum instrument mcu_hdr_instr(uint8_t hdr)
+{
+	return (enum instrument)(hdr >> 6);
+}
+
+/** Extract command from a MCU → GB header byte. */
+static inline enum mcu_cmd mcu_hdr_cmd(uint8_t hdr)
+{
+	return (enum mcu_cmd)((hdr >> 3) & 0x07);
+}
+
+/** Extract inline data bits from a MCU → GB header byte. */
+static inline uint8_t mcu_hdr_data(uint8_t hdr)
+{
+	return hdr & 0x07;
+}
+
+/* ---------------------------------------------------------------------- */
+/* GB → MCU commands                                                       */
+/* ---------------------------------------------------------------------- */
+
+/*
+ * Commands 0–4 are common to every instrument (same meaning, same ID).
+ * Commands 5+ are instrument-specific; see per-instrument enums below.
+ */
 enum common_cmd {
 	CMD_CHAN_VOLUME  = 0, /* mixer output volume 0–7                    */
 	CMD_CHAN_PAN     = 1, /* pan: 0=left, 1=both, 2=right               */
 	CMD_MIDI_CHANNEL = 2, /* MIDI channel assignment 0–15               */
 	CMD_PATCH_SAVE   = 3, /* save current params as patch N             */
 	CMD_PATCH_LOAD   = 4, /* load patch N and stream all params to GB   */
-	/* 5–27: instrument-specific (see per-instrument enums)             */
-	CMD_NOTE_OFF     = 28, /* MCU → GB only; no payload                 */
-	CMD_NOTE_ON      = 29, /* MCU → GB only; 2 bytes: period[10:8], period[7:0] */
-	/* 30–31 reserved */
+	/* 5–31: instrument-specific (see per-instrument enums)             */
 };
-
-/* ---------------------------------------------------------------------- */
-/* PU1 commands                                                            */
-/* ---------------------------------------------------------------------- */
 
 enum pu1_cmd {
 	PU1_CHAN_VOLUME  = 0,
@@ -75,12 +165,8 @@ enum pu1_cmd {
 	PU1_SWEEP_PACE   = 10, /* frequency sweep pace 0–7 (0 = off)        */
 	PU1_SWEEP_DIR    = 11, /* sweep direction: 0 = up, 1 = down         */
 	PU1_SWEEP_STEP   = 12, /* sweep step magnitude 0–7                  */
-	/* 13–31 reserved (note events, MCU → GB only, TBD) */
+	/* 13–31 reserved */
 };
-
-/* ---------------------------------------------------------------------- */
-/* PU2 commands                                                            */
-/* ---------------------------------------------------------------------- */
 
 enum pu2_cmd {
 	PU2_CHAN_VOLUME  = 0,
@@ -96,10 +182,6 @@ enum pu2_cmd {
 	/* 10–31 reserved */
 };
 
-/* ---------------------------------------------------------------------- */
-/* WAV commands                                                            */
-/* ---------------------------------------------------------------------- */
-
 enum wav_cmd {
 	WAV_CHAN_VOLUME  = 0,
 	WAV_CHAN_PAN     = 1,
@@ -110,10 +192,6 @@ enum wav_cmd {
 	WAV_SET_WAVE     = 6, /* followed by 16 bytes of wave RAM           */
 	/* 7–31 reserved */
 };
-
-/* ---------------------------------------------------------------------- */
-/* NOISE commands                                                          */
-/* ---------------------------------------------------------------------- */
 
 enum noise_cmd {
 	NOISE_CHAN_VOLUME  = 0,
@@ -132,57 +210,53 @@ enum noise_cmd {
 };
 
 /* ---------------------------------------------------------------------- */
-/* Header byte helpers                                                     */
+/* GB → MCU header helpers                                                 */
 /* ---------------------------------------------------------------------- */
 
-/** Build an instrument-specific header byte (V=0). */
-static inline uint8_t proto_instr_hdr(enum instrument instr, uint8_t cmd)
+/** Build a GB → MCU instrument-specific header byte (V=0). */
+static inline uint8_t gb_hdr(enum instrument instr, uint8_t cmd)
 {
 	return ((uint8_t)instr << 5) | (cmd & 0x1f);
 }
 
-/** True if the header is instrument-specific (V=0). */
-static inline int proto_is_instr(uint8_t hdr)
+/** True if a GB → MCU header is instrument-specific (V=0). */
+static inline int gb_hdr_is_instr(uint8_t hdr)
 {
 	return (hdr & 0x80) == 0;
 }
 
-/** Extract instrument from an instrument-specific header byte. */
-static inline enum instrument proto_instr(uint8_t hdr)
+/** Extract instrument from a GB → MCU instrument-specific header byte. */
+static inline enum instrument gb_hdr_instr(uint8_t hdr)
 {
 	return (enum instrument)((hdr >> 5) & 0x03);
 }
 
-/** Extract command from an instrument-specific header byte. */
-static inline uint8_t proto_cmd(uint8_t hdr)
+/** Extract command from a GB → MCU instrument-specific header byte. */
+static inline uint8_t gb_hdr_cmd(uint8_t hdr)
 {
 	return hdr & 0x1f;
 }
 
 /* ---------------------------------------------------------------------- */
-/* Receiver state machine (GB serial ISR)                                  */
+/* Receiver state machine (GB serial ISR, MCU → GB direction)             */
 /* ---------------------------------------------------------------------- */
 
 /*
  * Embed an rx_buf in your application state and zero-initialise it.
- * Feed each received byte to proto_rx_byte(); it calls back into your
- * engine when a complete message is assembled.
+ * Feed each received byte to the ISR; it dispatches on rx.state to
+ * assemble multi-byte messages before acting on them.
  */
 enum rx_state {
-	RX_IDLE,     /* waiting for a header byte                          */
-	RX_NOTE_HI,  /* got NOTE_ON; waiting for period[10:8] byte        */
-	RX_NOTE_LO,  /* got period[10:8]; waiting for period[7:0] byte    */
-	RX_VAL,      /* got instrument cmd; waiting for one value byte    */
-	RX_WAVE,     /* got WAV_SET_WAVE; counting 16 wave RAM bytes      */
+	RX_IDLE,      /* waiting for a header byte                          */
+	RX_NOTE_ON,   /* header saved; waiting for period low byte          */
+	RX_PARAM_ID,  /* header saved; waiting for param_id                 */
+	RX_PARAM_VAL, /* header + param_id saved; waiting for value         */
 };
 
 struct rx_buf {
 	enum rx_state state;
-	uint8_t       hdr; /* saved header byte                           */
-	union {
-		uint8_t period_hi; /* period[10:8] saved during RX_NOTE_LO  */
-		uint8_t wave_idx;  /* next wave RAM byte index during RX_WAVE */
-	};
+	uint8_t       hdr;      /* saved header byte                        */
+	uint8_t       param_id; /* saved param_id for SET_PARAM             */
 };
 
 #endif /* WAVES_PROTOCOL_H */
