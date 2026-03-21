@@ -10,6 +10,7 @@
  */
 #include "harness.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,13 +21,21 @@
 
 static int g_failures = 0;
 
-#define EXPECT(cond, fmt, ...)                                          \
-	do {                                                            \
-		if (!(cond)) {                                          \
-			fprintf(stderr, "  FAIL %s:%d: " fmt "\n",     \
-			        __FILE__, __LINE__, ##__VA_ARGS__);     \
-			g_failures++;                                   \
-		}                                                       \
+static void expect_fail(const char *file, int line, const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "  FAIL %s:%d: ", file, line);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "\n");
+	g_failures++;
+}
+
+#define EXPECT(cond, fmt, ...) \
+	do { \
+		if (!(cond)) \
+			expect_fail(__FILE__, __LINE__, fmt, ##__VA_ARGS__); \
 	} while (0)
 
 static void print_result(const char *name, int failures_before)
@@ -45,7 +54,7 @@ static void print_result(const char *name, int failures_before)
 static void test_init(const char *rom, const char *boot_rom)
 {
 	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
+	struct harness *h = harness_new(rom, boot_rom);
 	EXPECT(h != NULL, "harness_new returned NULL");
 	harness_free(h);
 	print_result("test_init", before);
@@ -57,7 +66,7 @@ static void test_init(const char *rom, const char *boot_rom)
 static void test_run_frames(const char *rom, const char *boot_rom)
 {
 	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
+	struct harness *h = harness_new(rom, boot_rom);
 	if (!h) { g_failures++; print_result("test_run_frames", before); return; }
 
 	harness_run_frames(h, 60);
@@ -75,7 +84,7 @@ static void test_run_frames(const char *rom, const char *boot_rom)
 static void test_audio_output(const char *rom, const char *boot_rom)
 {
 	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
+	struct harness *h = harness_new(rom, boot_rom);
 	if (!h) { g_failures++; print_result("test_audio_output", before); return; }
 
 	harness_run_frames(h, 10);
@@ -108,7 +117,7 @@ static void test_audio_output(const char *rom, const char *boot_rom)
 static void test_screen_capture(const char *rom, const char *boot_rom)
 {
 	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
+	struct harness *h = harness_new(rom, boot_rom);
 	if (!h) { g_failures++; print_result("test_screen_capture", before); return; }
 
 	harness_run_frames(h, 5);
@@ -135,7 +144,7 @@ static void test_screen_capture(const char *rom, const char *boot_rom)
 static void test_serial_enqueue(const char *rom, const char *boot_rom)
 {
 	int before = g_failures;
-	harness_t *h = harness_new(rom, boot_rom);
+	struct harness *h = harness_new(rom, boot_rom);
 	if (!h) { g_failures++; print_result("test_serial_enqueue", before); return; }
 
 	harness_serial_enqueue(h, 0x01);
