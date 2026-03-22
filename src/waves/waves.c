@@ -105,7 +105,7 @@ void pu1_trigger(void)
 void pu2_set_duty_cycle(enum duty_cycle duty)
 {
 	PU2.duty_cycle = duty;
-	NR21_REG = (duty << 6) | (NR11_REG & 0x1F);
+	NR21_REG = (duty << 6) | (NR21_REG & 0x1F);
 }
 
 void pu2_set_length(uint8_t len)
