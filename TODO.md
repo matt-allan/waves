@@ -19,9 +19,8 @@
 ## Serial protocol
 
 - [ ] Define message format (framing, opcodes, payload layout)
-- [ ] MCU → GB: patch load, note-on (channel + period), note-off, CC param update
-- [ ] GB → MCU: patch save (user-initiated, sends full patch), MIDI assignment changed
-- [ ] Link port serial ISR — receive bytes, dispatch to engine functions
+- [ ] MCU → GB
+- [ ] GB -> MCU
 
 ## UI / screen
 
