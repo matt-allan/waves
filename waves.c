@@ -61,7 +61,7 @@ inline void apu_enable(void)
 
 inline uint8_t env_reg_val(struct envelope *env)
 {
-	return (env->start_volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
+	return (env->volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
 }
 
 void pu1_set_sweep(uint8_t nr10)
@@ -308,8 +308,6 @@ void serial_isr(void)
 
 void tim(void)
 {
-	uint8_t env_val;
-
 	if (envelope_tick(&PU1.envelope)) {
 		pu1_update_env();
 		pu1_trigger();

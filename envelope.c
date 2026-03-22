@@ -16,6 +16,7 @@ void envelope_attack(struct envelope *env, uint8_t volume)
 	env->direction = ENV_DIR_UP;
 	env->sweep_pace = env->sweep_timer = attack;
 	env->start_volume = attack ? 0 : volume;
+	env->volume = env->start_volume;
 	env->target_volume = volume;
 }
 
@@ -101,6 +102,8 @@ bool envelope_next(struct envelope *env)
 		envelope_end(env);
 		return false;
 	}
+	/* All switch arms return; this silences the "must return value" warning. */
+	return false;
 }
 
 bool envelope_tick(struct envelope *env)
