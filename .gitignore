@@ -8,5 +8,6 @@
 *.noi
 test/test_basic
 build/
+tools/
 vendor/cppp/cppp
 vendor/cppp/*.o

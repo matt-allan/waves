@@ -14,10 +14,10 @@ Install host build dependencies (Ubuntu/Debian):
 sudo apt install sdcc gcc clang cmake libpng-dev
 ```
 
-Build the toolchain once:
+Install the toolchain (GBDK and cppp) into `tools/`:
 
 ```sh
-./scripts/build-toolchain.sh
+python3 scripts/install_tools.py
 ```
 
 Then build the ROM:

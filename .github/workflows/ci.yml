@@ -18,23 +18,14 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y sdcc gcc g++ clang cmake libpng-dev
 
-      - name: Get submodule SHAs
-        id: submodule-shas
-        run: |
-          echo "toolchain=$(git rev-parse HEAD:vendor/gbdk-2020)-$(git rev-parse HEAD:vendor/cppp)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache toolchain
-        id: cache-toolchain
+      - name: Cache tools
         uses: actions/cache@v4
         with:
-          path: |
-            build/gbdk
-            vendor/cppp/cppp
-          key: toolchain-${{ steps.submodule-shas.outputs.toolchain }}
+          path: tools
+          key: tools-${{ hashFiles('scripts/install_tools.py') }}
 
-      - name: Build toolchain
-        if: steps.cache-toolchain.outputs.cache-hit != 'true'
-        run: ./scripts/build-toolchain.sh
+      - name: Install tools
+        run: python3 scripts/install_tools.py
 
       - name: Build ROM
         run: make
