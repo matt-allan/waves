@@ -6,6 +6,7 @@
 
 import argparse
 import os
+import platform
 import sys
 
 from vendor.ninja import ninja_syntax
@@ -86,26 +87,12 @@ n.newline()
 n.default('$builddir/' + game + '.gb')
 n.newline()
 
-# --- Test toolchain ---
+# --- SameBoy ---
 
 sameboy_root = 'vendor/SameBoy'
 sameboy_lib = os.path.join(sameboy_root, 'build', 'lib', 'libsameboy.a')
-sameboy_inc = os.path.join(sameboy_root, 'build', 'include')
 
-n.variable('test_cc', 'gcc')
-n.variable('test_cflags', '-std=c11 -Wall -Wextra -I' + sameboy_inc +
-           ' -Isrc/emulator -Isrc/midilink')
-n.variable('test_ldflags', '-lm')
-n.newline()
-
-n.rule('cc_host',
-       command='$test_cc $test_cflags -c $in -o $out',
-       description='CC $out')
-n.newline()
-
-n.rule('link_host',
-       command='$test_cc $in $test_ldflags -o $out',
-       description='LINK $out')
+n.variable('host_cc', 'gcc')
 n.newline()
 
 # SameBoy is built by its own Makefile; treat it as an external dependency.
@@ -113,25 +100,28 @@ tools_dir = os.path.abspath('tools')
 n.rule('sameboy',
        command='PATH="' + tools_dir +
                ':$$PATH" make -C ' + sameboy_root +
-               ' headers lib CONF=release',
+               ' headers lib CONF=release EXTRA_CFLAGS=-fPIC',
        description='MAKE SameBoy',
        generator=True)
 n.build(sameboy_lib, 'sameboy')
 n.newline()
 
-# --- Test build edges ---
+# Shared library for Python ctypes bindings.
+if platform.system() == 'Darwin':
+    shlib_ext = '.dylib'
+    whole_archive = '-Wl,-all_load'
+    no_whole_archive = ''
+else:
+    shlib_ext = '.so'
+    whole_archive = '-Wl,--whole-archive'
+    no_whole_archive = '-Wl,--no-whole-archive'
 
-n.build('$builddir/test/emulator.o', 'cc_host', 'src/emulator/emulator.c',
-        implicit=['src/emulator/emulator.h'],
-        order_only=[sameboy_lib])
-n.build('$builddir/test/test_basic.o', 'cc_host', 'test/test_basic.c',
-        implicit=['src/emulator/emulator.h', 'src/midilink/protocol.h'],
-        order_only=[sameboy_lib])
-n.newline()
-
-n.build('$builddir/test/test_basic', 'link_host',
-        ['$builddir/test/test_basic.o', '$builddir/test/emulator.o',
-         sameboy_lib])
+sameboy_so = os.path.join('$builddir', 'lib', 'libsameboy' + shlib_ext)
+n.rule('shlib',
+       command='$host_cc -shared -o $out ' + whole_archive +
+               ' $in ' + no_whole_archive + ' -lm',
+       description='SHLIB $out')
+n.build(sameboy_so, 'shlib', [sameboy_lib])
 n.newline()
 
 n.close()
