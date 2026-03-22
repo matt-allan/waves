@@ -1,12 +1,3 @@
-*.asm
-*.lst
-*.o
-*.sym
-*.gb
-*.ihx
-*.map
-*.noi
-test/test_basic
 build/
 build.ninja
 tools/

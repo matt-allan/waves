@@ -1,7 +1,7 @@
 /*
- * harness.c — SameBoy-backed test harness for waves.gb
+ * emulator.c — SameBoy-backed emulator for waves.gb
  */
-#include "harness.h"
+#include "emulator.h"
 
 #include <sameboy/gb.h>
 
@@ -14,15 +14,15 @@
 /* Internal state                                                           */
 /* ---------------------------------------------------------------------- */
 
-struct harness {
+struct emulator {
 	GB_gameboy_t *gb;
 
 	/* Video */
-	uint32_t pixels[HARNESS_SCREEN_W * HARNESS_SCREEN_H];
+	uint32_t pixels[EMULATOR_SCREEN_W * EMULATOR_SCREEN_H];
 	bool     frame_ready;
 
 	/* Audio ring buffer */
-	GB_sample_t audio_buf[HARNESS_AUDIO_BUF_LEN];
+	GB_sample_t audio_buf[EMULATOR_AUDIO_BUF_LEN];
 	size_t      audio_head;   /* next write position */
 	size_t      audio_tail;   /* next read position  */
 
@@ -36,14 +36,14 @@ struct harness {
 	 * RX path (GB → MCU): bits arriving in bit_start are accumulated
 	 * MSB-first; completed bytes are pushed to rx_queue.
 	 */
-	uint8_t tx_queue[HARNESS_SERIAL_QUEUE_LEN];
+	uint8_t tx_queue[EMULATOR_SERIAL_QUEUE_LEN];
 	int     tx_head;          /* next byte to read  */
 	int     tx_tail;          /* next slot to write */
 	uint8_t tx_byte;          /* byte currently being clocked out */
 	int     tx_bit;           /* bit index 7..0; -1 = idle */
 	int     tx_xfer;          /* transfer position 7..0; 7 = MSB/start  */
 
-	uint8_t rx_queue[HARNESS_SERIAL_QUEUE_LEN];
+	uint8_t rx_queue[EMULATOR_SERIAL_QUEUE_LEN];
 	int     rx_head;
 	int     rx_tail;
 	uint8_t rx_byte;          /* byte being assembled from incoming bits */
@@ -90,7 +90,7 @@ static uint32_t cb_rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 static void cb_vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
 {
 	(void)type;
-	struct harness *h = GB_get_user_data(gb);
+	struct emulator *h = GB_get_user_data(gb);
 	h->frame_ready = true;
 }
 
@@ -103,12 +103,12 @@ static void cb_log(GB_gameboy_t *gb, const char *str, GB_log_attributes_t attrs)
 
 static void cb_audio_sample(GB_gameboy_t *gb, GB_sample_t *sample)
 {
-	struct harness *h = GB_get_user_data(gb);
+	struct emulator *h = GB_get_user_data(gb);
 
-	size_t next = (h->audio_head + 1) % HARNESS_AUDIO_BUF_LEN;
+	size_t next = (h->audio_head + 1) % EMULATOR_AUDIO_BUF_LEN;
 	if (next == h->audio_tail) {
 		/* Buffer full — drop oldest sample to make room */
-		h->audio_tail = (h->audio_tail + 1) % HARNESS_AUDIO_BUF_LEN;
+		h->audio_tail = (h->audio_tail + 1) % EMULATOR_AUDIO_BUF_LEN;
 	}
 	h->audio_buf[h->audio_head] = *sample;
 	h->audio_head = next;
@@ -121,7 +121,7 @@ static void cb_audio_sample(GB_gameboy_t *gb, GB_sample_t *sample)
  */
 static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
 {
-	struct harness *h = GB_get_user_data(gb);
+	struct emulator *h = GB_get_user_data(gb);
 
 	/* Accumulate bit from GB (MSB first: bit 7 arrives first) */
 	h->rx_byte = (uint8_t)((h->rx_byte << 1) | (bit_to_send ? 1 : 0));
@@ -129,7 +129,7 @@ static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
 
 	if (h->rx_bit == 8) {
 		/* Full byte received — push to rx_queue if space available */
-		int next = (h->rx_tail + 1) % HARNESS_SERIAL_QUEUE_LEN;
+		int next = (h->rx_tail + 1) % EMULATOR_SERIAL_QUEUE_LEN;
 		if (next != h->rx_head) {
 			h->rx_queue[h->rx_tail] = h->rx_byte;
 			h->rx_tail = next;
@@ -150,14 +150,14 @@ static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
  */
 static bool cb_serial_bit_end(GB_gameboy_t *gb)
 {
-	struct harness *h = GB_get_user_data(gb);
+	struct emulator *h = GB_get_user_data(gb);
 
 	/* Only load at the MSB edge of a new transfer so a byte enqueued
 	 * mid-transfer is never split across two consecutive transfers. */
 	if (h->tx_xfer == 7 && h->tx_bit < 0) {
 		if (h->tx_head != h->tx_tail) {
 			h->tx_byte = h->tx_queue[h->tx_head];
-			h->tx_head = (h->tx_head + 1) % HARNESS_SERIAL_QUEUE_LEN;
+			h->tx_head = (h->tx_head + 1) % EMULATOR_SERIAL_QUEUE_LEN;
 			h->tx_bit  = 7; /* will return bit 7 this call */
 		}
 	}
@@ -180,11 +180,11 @@ static bool cb_serial_bit_end(GB_gameboy_t *gb)
 /* Lifecycle                                                                */
 /* ---------------------------------------------------------------------- */
 
-struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
+struct emulator *emulator_new(const char *rom_path, const char *boot_rom_path)
 {
-	struct harness *h = calloc(1, sizeof(*h));
+	struct emulator *h = calloc(1, sizeof(*h));
 	if (!h) {
-		fprintf(stderr, "harness: out of memory\n");
+		fprintf(stderr, "emulator: out of memory\n");
 		return NULL;
 	}
 
@@ -193,7 +193,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 
 	h->gb = GB_init(GB_alloc(), GB_MODEL_DMG_B);
 	if (!h->gb) {
-		fprintf(stderr, "harness: GB_init failed\n");
+		fprintf(stderr, "emulator: GB_init failed\n");
 		free(h);
 		return NULL;
 	}
@@ -207,7 +207,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 	GB_set_vblank_callback(h->gb, cb_vblank);
 
 	/* Audio */
-	GB_set_sample_rate(h->gb, HARNESS_SAMPLE_RATE);
+	GB_set_sample_rate(h->gb, EMULATOR_SAMPLE_RATE);
 	GB_apu_set_sample_callback(h->gb, cb_audio_sample);
 
 	/* Serial */
@@ -217,7 +217,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 	/* Boot ROM: use provided image or the built-in stub (see boot_rom_stub). */
 	if (boot_rom_path) {
 		if (GB_load_boot_rom(h->gb, boot_rom_path) != 0) {
-			fprintf(stderr, "harness: failed to load boot ROM: %s\n",
+			fprintf(stderr, "emulator: failed to load boot ROM: %s\n",
 			        boot_rom_path);
 			GB_dealloc(h->gb);
 			free(h);
@@ -230,7 +230,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 
 	/* Game ROM */
 	if (GB_load_rom(h->gb, rom_path) != 0) {
-		fprintf(stderr, "harness: failed to load ROM: %s\n", rom_path);
+		fprintf(stderr, "emulator: failed to load ROM: %s\n", rom_path);
 		GB_dealloc(h->gb);
 		free(h);
 		return NULL;
@@ -239,7 +239,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 	return h;
 }
 
-void harness_free(struct harness *h)
+void emulator_free(struct emulator *h)
 {
 	if (!h)
 		return;
@@ -251,7 +251,7 @@ void harness_free(struct harness *h)
 /* Emulation control                                                        */
 /* ---------------------------------------------------------------------- */
 
-void harness_run_frames(struct harness *h, int n)
+void emulator_run_frames(struct emulator *h, int n)
 {
 	for (int i = 0; i < n; i++) {
 		h->frame_ready = false;
@@ -264,23 +264,23 @@ void harness_run_frames(struct harness *h, int n)
 /* Link port                                                                */
 /* ---------------------------------------------------------------------- */
 
-void harness_serial_enqueue(struct harness *h, uint8_t byte)
+void emulator_serial_enqueue(struct emulator *h, uint8_t byte)
 {
-	int next = (h->tx_tail + 1) % HARNESS_SERIAL_QUEUE_LEN;
+	int next = (h->tx_tail + 1) % EMULATOR_SERIAL_QUEUE_LEN;
 	if (next == h->tx_head) {
-		fprintf(stderr, "harness: TX queue full, byte 0x%02x dropped\n", byte);
+		fprintf(stderr, "emulator: TX queue full, byte 0x%02x dropped\n", byte);
 		return;
 	}
 	h->tx_queue[h->tx_tail] = byte;
 	h->tx_tail = next;
 }
 
-bool harness_serial_dequeue(struct harness *h, uint8_t *out)
+bool emulator_serial_dequeue(struct emulator *h, uint8_t *out)
 {
 	if (h->rx_head == h->rx_tail)
 		return false;
 	*out = h->rx_queue[h->rx_head];
-	h->rx_head = (h->rx_head + 1) % HARNESS_SERIAL_QUEUE_LEN;
+	h->rx_head = (h->rx_head + 1) % EMULATOR_SERIAL_QUEUE_LEN;
 	return true;
 }
 
@@ -289,12 +289,12 @@ bool harness_serial_dequeue(struct harness *h, uint8_t *out)
 /* Screen capture                                                           */
 /* ---------------------------------------------------------------------- */
 
-const uint32_t *harness_get_framebuffer(const struct harness *h)
+const uint32_t *emulator_get_framebuffer(const struct emulator *h)
 {
 	return h->pixels;
 }
 
-int harness_save_ppm(const struct harness *h, const char *path)
+int emulator_save_ppm(const struct emulator *h, const char *path)
 {
 	FILE *f = fopen(path, "w");
 	if (!f) {
@@ -302,11 +302,11 @@ int harness_save_ppm(const struct harness *h, const char *path)
 		return -1;
 	}
 
-	fprintf(f, "P3\n%d %d\n255\n", HARNESS_SCREEN_W, HARNESS_SCREEN_H);
+	fprintf(f, "P3\n%d %d\n255\n", EMULATOR_SCREEN_W, EMULATOR_SCREEN_H);
 
-	for (int y = 0; y < HARNESS_SCREEN_H; y++) {
-		for (int x = 0; x < HARNESS_SCREEN_W; x++) {
-			uint32_t px = h->pixels[y * HARNESS_SCREEN_W + x];
+	for (int y = 0; y < EMULATOR_SCREEN_H; y++) {
+		for (int x = 0; x < EMULATOR_SCREEN_W; x++) {
+			uint32_t px = h->pixels[y * EMULATOR_SCREEN_W + x];
 			uint8_t r = (px >> 16) & 0xFF;
 			uint8_t g = (px >>  8) & 0xFF;
 			uint8_t b = (px      ) & 0xFF;
@@ -322,18 +322,18 @@ int harness_save_ppm(const struct harness *h, const char *path)
 /* Audio capture                                                            */
 /* ---------------------------------------------------------------------- */
 
-size_t harness_drain_audio(struct harness *h, GB_sample_t *buf, size_t max_samples)
+size_t emulator_drain_audio(struct emulator *h, GB_sample_t *buf, size_t max_samples)
 {
 	size_t count = 0;
 	while (count < max_samples && h->audio_tail != h->audio_head) {
 		buf[count++] = h->audio_buf[h->audio_tail];
-		h->audio_tail = (h->audio_tail + 1) % HARNESS_AUDIO_BUF_LEN;
+		h->audio_tail = (h->audio_tail + 1) % EMULATOR_AUDIO_BUF_LEN;
 	}
 	return count;
 }
 
-size_t harness_audio_available(const struct harness *h)
+size_t emulator_audio_available(const struct emulator *h)
 {
-	return (h->audio_head - h->audio_tail + HARNESS_AUDIO_BUF_LEN)
-	       % HARNESS_AUDIO_BUF_LEN;
+	return (h->audio_head - h->audio_tail + EMULATOR_AUDIO_BUF_LEN)
+	       % EMULATOR_AUDIO_BUF_LEN;
 }

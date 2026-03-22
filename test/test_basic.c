@@ -1,11 +1,11 @@
 /*
- * test_basic.c — smoke tests for the waves.gb test harness
+ * test_basic.c — smoke tests for the waves.gb test emulator
  *
  * Environment variables:
  *   WAVES_ROM         path to waves.gb  (default: ../waves.gb)
  *   SAMEBOY_BOOT_ROM  path to DMG boot ROM image (optional)
  */
-#include "harness.h"
+#include "emulator.h"
 #include "protocol.h"
 
 #include <assert.h>
@@ -16,21 +16,21 @@
 /* Tests                                                                    */
 /* ---------------------------------------------------------------------- */
 
-/* Verify the harness initialises and tears down cleanly. */
+/* Verify the emulator initialises and tears down cleanly. */
 static void test_init(const char *rom, const char *boot_rom)
 {
-	struct harness *h = harness_new(rom, boot_rom);
+	struct emulator *h = emulator_new(rom, boot_rom);
 	assert(h != NULL);
-	harness_free(h);
+	emulator_free(h);
 }
 
 /* Run 60 frames (~1 s GB time) without crashing. */
 static void test_run_frames(const char *rom, const char *boot_rom)
 {
-	struct harness *h = harness_new(rom, boot_rom);
+	struct emulator *h = emulator_new(rom, boot_rom);
 	assert(h != NULL);
-	harness_run_frames(h, 60);
-	harness_free(h);
+	emulator_run_frames(h, 60);
+	emulator_free(h);
 }
 
 /*
@@ -39,18 +39,18 @@ static void test_run_frames(const char *rom, const char *boot_rom)
  */
 static void test_audio_output(const char *rom, const char *boot_rom)
 {
-	struct harness *h = harness_new(rom, boot_rom);
+	struct emulator *h = emulator_new(rom, boot_rom);
 	assert(h != NULL);
 
-	harness_run_frames(h, 10);
+	emulator_run_frames(h, 10);
 
-	size_t available = harness_audio_available(h);
+	size_t available = emulator_audio_available(h);
 	assert(available > 0);
 
-	GB_sample_t buf[HARNESS_AUDIO_BUF_LEN];
-	size_t drained = harness_drain_audio(h, buf, HARNESS_AUDIO_BUF_LEN);
+	GB_sample_t buf[EMULATOR_AUDIO_BUF_LEN];
+	size_t drained = emulator_drain_audio(h, buf, EMULATOR_AUDIO_BUF_LEN);
 	assert(drained == available);
-	assert(harness_audio_available(h) == 0);
+	assert(emulator_audio_available(h) == 0);
 
 	/*
 	 * Rough sanity: at 44100 Hz, 10 frames at 59.7 fps ~= 7390 samples.
@@ -58,23 +58,23 @@ static void test_audio_output(const char *rom, const char *boot_rom)
 	 */
 	assert(drained > 1000);
 
-	harness_free(h);
+	emulator_free(h);
 }
 
 /* Verify we can save a PPM without errors. */
 static void test_screen_capture(const char *rom, const char *boot_rom)
 {
-	struct harness *h = harness_new(rom, boot_rom);
+	struct emulator *h = emulator_new(rom, boot_rom);
 	assert(h != NULL);
 
-	harness_run_frames(h, 5);
+	emulator_run_frames(h, 5);
 
-	assert(harness_get_framebuffer(h) != NULL);
+	assert(emulator_get_framebuffer(h) != NULL);
 
-	assert(harness_save_ppm(h, "/tmp/waves_test_frame.ppm") == 0);
+	assert(emulator_save_ppm(h, "/tmp/waves_test_frame.ppm") == 0);
 	printf("    (screenshot saved to /tmp/waves_test_frame.ppm)\n");
 
-	harness_free(h);
+	emulator_free(h);
 }
 
 /*
@@ -83,20 +83,20 @@ static void test_screen_capture(const char *rom, const char *boot_rom)
  */
 static void test_note_on(const char *rom, const char *boot_rom)
 {
-	struct harness *h = harness_new(rom, boot_rom);
+	struct emulator *h = emulator_new(rom, boot_rom);
 	assert(h != NULL);
 
-	harness_run_frames(h, 2);
+	emulator_run_frames(h, 2);
 
 	/* NOTE_ON: PU1, period = 1046 */
-	harness_serial_enqueue(h, proto_hdr(INSTR_PU1, MCU_NOTE_ON));
-	harness_serial_enqueue(h, 1046 >> 8);
-	harness_serial_enqueue(h, 1046 & 0xFF);
+	emulator_serial_enqueue(h, proto_hdr(INSTR_PU1, MCU_NOTE_ON));
+	emulator_serial_enqueue(h, 1046 >> 8);
+	emulator_serial_enqueue(h, 1046 & 0xFF);
 
-	harness_run_frames(h, 30);
+	emulator_run_frames(h, 30);
 
-	GB_sample_t buf[HARNESS_AUDIO_BUF_LEN];
-	size_t n = harness_drain_audio(h, buf, HARNESS_AUDIO_BUF_LEN);
+	GB_sample_t buf[EMULATOR_AUDIO_BUF_LEN];
+	size_t n = emulator_drain_audio(h, buf, EMULATOR_AUDIO_BUF_LEN);
 	assert(n > 0);
 
 	bool non_silent = false;
@@ -108,7 +108,7 @@ static void test_note_on(const char *rom, const char *boot_rom)
 	}
 	assert(non_silent);
 
-	harness_free(h);
+	emulator_free(h);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -123,7 +123,7 @@ int main(void)
 	if (!rom)
 		rom = "../waves.gb";
 
-	printf("waves test harness — basic smoke tests\n");
+	printf("waves test emulator — basic smoke tests\n");
 	printf("  ROM:      %s\n", rom);
 	printf("  boot ROM: %s\n", boot_rom ? boot_rom : "(none)");
 	printf("\n");
