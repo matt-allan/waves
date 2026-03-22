@@ -6,6 +6,7 @@
 
 import argparse
 import os
+import platform
 import sys
 
 from vendor.ninja import ninja_syntax
@@ -113,10 +114,28 @@ tools_dir = os.path.abspath('tools')
 n.rule('sameboy',
        command='PATH="' + tools_dir +
                ':$$PATH" make -C ' + sameboy_root +
-               ' headers lib CONF=release',
+               ' headers lib CONF=release EXTRA_CFLAGS=-fPIC',
        description='MAKE SameBoy',
        generator=True)
 n.build(sameboy_lib, 'sameboy')
+n.newline()
+
+# Shared library for Python ctypes bindings.
+if platform.system() == 'Darwin':
+    shlib_ext = '.dylib'
+    whole_archive = '-Wl,-all_load'
+    no_whole_archive = ''
+else:
+    shlib_ext = '.so'
+    whole_archive = '-Wl,--whole-archive'
+    no_whole_archive = '-Wl,--no-whole-archive'
+
+sameboy_so = os.path.join('$builddir', 'lib', 'libsameboy' + shlib_ext)
+n.rule('shlib',
+       command='$test_cc -shared -o $out ' + whole_archive +
+               ' $in ' + no_whole_archive + ' -lm',
+       description='SHLIB $out')
+n.build(sameboy_so, 'shlib', [sameboy_lib])
 n.newline()
 
 # --- Test build edges ---
