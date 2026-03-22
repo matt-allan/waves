@@ -8,8 +8,7 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor', 'ninja'))
-import ninja_syntax
+from vendor.ninja import ninja_syntax
 
 parser = argparse.ArgumentParser(description='Configure the waves build.')
 parser.add_argument('--debug', action='store_true',
