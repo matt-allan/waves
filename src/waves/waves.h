@@ -61,4 +61,12 @@ struct wave {
 	uint8_t wave[16];
 };
 
+struct noise {
+	/** Controls pitch via clock shift 0–15 (NR43[7:4]) */
+	uint8_t frequency;
+	/** Controls timbre: LFSR width (bit 3) + clock divider (bits 2:0) (NR43[3:0]) */
+	uint8_t tone;
+	struct envelope envelope;
+};
+
 #endif // WAVES_WAVES_H

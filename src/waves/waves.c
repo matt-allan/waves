@@ -24,6 +24,8 @@ struct wave WAV = {
 	     0xFF, 0x00, 0xFF, 0x00, 0xFF},
 };
 
+struct noise NOISE = {.envelope = {0}};
+
 inline void update_keys(void)
 {
 	last_keys = keys;
@@ -162,6 +164,31 @@ void wav_trigger(void)
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
+void noise_set_tone(uint8_t tone)
+{
+	NOISE.tone = tone & 0x0F;
+	NR43_REG = (NOISE.frequency << 4) | NOISE.tone;
+}
+
+void noise_set_length(uint8_t len)
+{
+	NOISE.envelope.length = len;
+	NR41_REG = len & 0x3F;
+}
+
+inline void noise_update_env(void)
+{
+	NR42_REG = env_reg_val(&NOISE.envelope);
+}
+
+void noise_trigger(void)
+{
+	uint8_t len_en = NOISE.envelope.length != 0;
+
+	NR43_REG = (NOISE.frequency << 4) | NOISE.tone;
+	NR44_REG = (1 << 7) | (len_en << 6);
+}
+
 void serial_isr(void)
 {
 	uint8_t byte = SB_REG;
@@ -190,6 +217,11 @@ void serial_isr(void)
 			break;
 		case PROTO_HDR(INSTR_WAV, MCU_NOTE_OFF):
 			wav_set_volume(0);
+			break;
+		case PROTO_HDR(INSTR_NOISE, MCU_NOTE_OFF):
+			envelope_off(&NOISE.envelope);
+			noise_update_env();
+			noise_trigger();
 			break;
 		/* WAV_SET_WAVE — 16-byte payload */
 		case PROTO_HDR(INSTR_WAV, WAV_SET_WAVE):
@@ -232,6 +264,12 @@ void serial_isr(void)
 		case PROTO_HDR(INSTR_WAV, MCU_NOTE_ON):
 			WAV.period = period;
 			wav_trigger();
+			break;
+		case PROTO_HDR(INSTR_NOISE, MCU_NOTE_ON):
+			NOISE.frequency = period & 0x0F;
+			envelope_on(&NOISE.envelope, MAX_VOLUME);
+			noise_update_env();
+			noise_trigger();
 			break;
 		}
 		rx.state = RX_IDLE;
@@ -277,6 +315,21 @@ void serial_isr(void)
 		case PROTO_HDR(INSTR_WAV, CMD_VOLUME):
 			wav_set_volume(byte);
 			break;
+		case PROTO_HDR(INSTR_NOISE, CMD_ATTACK):
+			NOISE.envelope.attack = byte;
+			break;
+		case PROTO_HDR(INSTR_NOISE, CMD_DECAY):
+			NOISE.envelope.decay = byte;
+			break;
+		case PROTO_HDR(INSTR_NOISE, CMD_SUSTAIN):
+			NOISE.envelope.sustain = byte;
+			break;
+		case PROTO_HDR(INSTR_NOISE, CMD_RELEASE):
+			NOISE.envelope.release = byte;
+			break;
+		case PROTO_HDR(INSTR_NOISE, NOISE_CTRL):
+			noise_set_tone(byte);
+			break;
 		}
 		rx.state = RX_IDLE;
 		break;
@@ -302,6 +355,11 @@ void tim(void)
 	if (envelope_tick(&PU2.envelope)) {
 		pu2_update_env();
 		pu2_trigger();
+	}
+
+	if (envelope_tick(&NOISE.envelope)) {
+		noise_update_env();
+		noise_trigger();
 	}
 }
 
@@ -332,6 +390,11 @@ void main(void)
 
 	WAV.period = 1379;
 	wav_load_wave_ram();
+
+	NOISE.envelope.attack = 7;
+	NOISE.envelope.decay = 7;
+	NOISE.envelope.sustain = 2;
+	NOISE.envelope.release = 7;
 
 	while (1) {
 		update_keys();
