@@ -20,6 +20,11 @@ const uint16_t frequencies[] = {
 };
 
 
+enum sweep_dir {
+	SWEEP_DIR_INCR = 0,
+	SWEEP_DIR_DECR = 1,
+};
+
 enum duty_cycle {
 	DUTY_CYCLE_12_5 = 0,
 	DUTY_CYCLE_25 = 1,
@@ -27,10 +32,16 @@ enum duty_cycle {
 	DUTY_CYCLE_75 = 3,
 };
 
+struct sweep {
+	uint8_t pace;
+	enum sweep_dir dir;
+	uint8_t step;
+};
+
 struct pulse1 {
 	uint16_t period;
 	enum duty_cycle duty_cycle;
-	uint8_t nr10; /* full NR10 sweep register value, written directly */
+	struct sweep sweep;
 	struct envelope envelope;
 };
 

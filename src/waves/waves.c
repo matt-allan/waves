@@ -72,7 +72,9 @@ inline uint8_t env_reg_val(struct envelope *env)
 
 void pu1_set_sweep(uint8_t nr10)
 {
-	PU1.nr10 = nr10;
+	PU1.sweep.pace = (nr10 >> 4) & 0x7;
+	PU1.sweep.dir = (enum sweep_dir)((nr10 >> 3) & 0x1);
+	PU1.sweep.step = nr10 & 0x7;
 	NR10_REG = nr10;
 }
 
@@ -255,8 +257,7 @@ void serial_isr(void)
 			pu1_set_duty_cycle((enum duty_cycle)byte);
 			break;
 		case PROTO_HDR(INSTR_PU1, PU1_SWEEP):
-			PU1.nr10 = byte;
-			NR10_REG = byte;
+			pu1_set_sweep(byte);
 			break;
 		case PROTO_HDR(INSTR_PU2, CMD_ATTACK):
 			PU2.envelope.attack = byte;
