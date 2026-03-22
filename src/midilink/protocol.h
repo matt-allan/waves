@@ -108,10 +108,14 @@ enum noise_cmd {
 /* Header byte helpers (same format both directions)                       */
 /* ---------------------------------------------------------------------- */
 
+/** Build an instrument-specific header byte (V=0) — macro for use in
+ *  static initializers where SDCC cannot evaluate inline functions. */
+#define PROTO_HDR(instr, cmd) (((instr) << 5) | ((cmd) & 0x1f))
+
 /** Build an instrument-specific header byte (V=0). */
 static inline uint8_t proto_hdr(enum instrument instr, uint8_t cmd)
 {
-	return ((uint8_t)instr << 5) | (cmd & 0x1f);
+	return PROTO_HDR(instr, cmd);
 }
 
 /** True if the header is instrument-specific (V=0). */

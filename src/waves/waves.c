@@ -155,141 +155,122 @@ void wav_trigger(void)
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
-static void note_on(enum instrument instr, uint16_t period)
-{
-	switch (instr) {
-	case INSTR_PU1:
-		PU1.period = period;
-		envelope_on(&PU1.envelope, MAX_VOLUME);
-		pu1_update_env();
-		pu1_trigger();
-		break;
-	case INSTR_PU2:
-		PU2.period = period;
-		envelope_on(&PU2.envelope, MAX_VOLUME);
-		pu2_update_env();
-		pu2_trigger();
-		break;
-	case INSTR_WAV:
-		WAV.period = period;
-		wav_trigger();
-		break;
-	case INSTR_NOISE:
-		break;
-	}
-}
-
-static void note_off(enum instrument instr)
-{
-	switch (instr) {
-	case INSTR_PU1:
-		envelope_off(&PU1.envelope);
-		pu1_update_env();
-		pu1_trigger();
-		break;
-	case INSTR_PU2:
-		envelope_off(&PU2.envelope);
-		pu2_update_env();
-		pu2_trigger();
-		break;
-	case INSTR_WAV:
-		wav_set_volume(0);
-		break;
-	case INSTR_NOISE:
-		break;
-	}
-}
-
-static void set_param(enum instrument instr, uint8_t cmd, uint8_t value)
-{
-	switch (cmd) {
-	case CMD_ATTACK:
-		if (instr == INSTR_PU1)
-			PU1.envelope.attack = value;
-		else if (instr == INSTR_PU2)
-			PU2.envelope.attack = value;
-		break;
-	case CMD_DECAY:
-		if (instr == INSTR_PU1)
-			PU1.envelope.decay = value;
-		else if (instr == INSTR_PU2)
-			PU2.envelope.decay = value;
-		break;
-	case CMD_SUSTAIN:
-		if (instr == INSTR_PU1)
-			PU1.envelope.sustain = value;
-		else if (instr == INSTR_PU2)
-			PU2.envelope.sustain = value;
-		break;
-	case CMD_RELEASE:
-		if (instr == INSTR_PU1)
-			PU1.envelope.release = value;
-		else if (instr == INSTR_PU2)
-			PU2.envelope.release = value;
-		break;
-	case CMD_VOLUME:
-		if (instr == INSTR_WAV)
-			wav_set_volume(value);
-		break;
-	case PU1_DUTY_CYCLE: /* == PU2_DUTY_CYCLE == WAV_SET_WAVE == NOISE_CTRL == 25 */
-		if (instr == INSTR_PU1)
-			pu1_set_duty_cycle((enum duty_cycle)value);
-		else if (instr == INSTR_PU2)
-			pu2_set_duty_cycle((enum duty_cycle)value);
-		/* WAV_SET_WAVE handled by RX_WAVE state; NOISE_CTRL: stub */
-		break;
-	case PU1_SWEEP: /* 26, PU1 only */
-		if (instr == INSTR_PU1) {
-			PU1.nr10 = value;
-			NR10_REG = value;
-		}
-		break;
-	}
-}
-
 void serial_isr(void)
 {
 	uint8_t byte = SB_REG;
-	uint8_t cmd;
 
 	switch (rx.state) {
 	case RX_IDLE:
 		rx.hdr = byte;
-		cmd = proto_cmd(byte);
-		if (cmd == MCU_NOTE_ON) {
+		switch (byte) {
+		/* NOTE_ON — all instruments need 2-byte period payload */
+		case PROTO_HDR(INSTR_PU1, MCU_NOTE_ON):
+		case PROTO_HDR(INSTR_PU2, MCU_NOTE_ON):
+		case PROTO_HDR(INSTR_WAV, MCU_NOTE_ON):
+		case PROTO_HDR(INSTR_NOISE, MCU_NOTE_ON):
 			rx.state = RX_NOTE_HI;
-		} else if (cmd == MCU_NOTE_OFF) {
-			note_off(proto_instr(byte));
-		} else if (cmd >= CMD_CHAN_VOLUME && cmd <= PU1_SWEEP) {
-			/*
-			 * Param slots 2–26 all carry one value byte, except
-			 * WAV_SET_WAVE (slot 25 on WAV) which streams 16 bytes
-			 * of wave RAM.  Reserved slots 0–1 and 27–31 are
-			 * ignored so that idle-line 0xFF bytes (cmd=31) do not
-			 * corrupt the state machine.
-			 */
-			if (proto_instr(byte) == INSTR_WAV &&
-			    cmd == WAV_SET_WAVE) {
-				rx.wave_idx = 0;
-				NR30_REG = 0x00;
-				rx.state = RX_WAVE;
-			} else {
+			break;
+		/* NOTE_OFF — immediate, per-instrument */
+		case PROTO_HDR(INSTR_PU1, MCU_NOTE_OFF):
+			envelope_off(&PU1.envelope);
+			pu1_update_env();
+			pu1_trigger();
+			break;
+		case PROTO_HDR(INSTR_PU2, MCU_NOTE_OFF):
+			envelope_off(&PU2.envelope);
+			pu2_update_env();
+			pu2_trigger();
+			break;
+		case PROTO_HDR(INSTR_WAV, MCU_NOTE_OFF):
+			wav_set_volume(0);
+			break;
+		/* WAV_SET_WAVE — 16-byte payload */
+		case PROTO_HDR(INSTR_WAV, WAV_SET_WAVE):
+			rx.wave_idx = 0;
+			NR30_REG = 0x00;
+			rx.state = RX_WAVE;
+			break;
+		/*
+		 * All other param commands carry one value byte.
+		 * Reserved slots and idle-line 0xFF (cmd=31) fall
+		 * through to default and are safely ignored.
+		 */
+		default: {
+			uint8_t cmd = proto_cmd(byte);
+			if (cmd >= CMD_CHAN_VOLUME && cmd <= PU1_SWEEP)
 				rx.state = RX_VAL;
-			}
+			break;
 		}
-		/* unknown/reserved cmd: stay in RX_IDLE */
+		}
 		break;
 	case RX_NOTE_HI:
 		rx.period_hi = byte;
 		rx.state = RX_NOTE_LO;
 		break;
-	case RX_NOTE_LO:
-		note_on(proto_instr(rx.hdr),
-			((uint16_t)(rx.period_hi & 0x07) << 8) | byte);
+	case RX_NOTE_LO: {
+		uint16_t period =
+			((uint16_t)(rx.period_hi & 0x07) << 8) | byte;
+		switch (rx.hdr) {
+		case PROTO_HDR(INSTR_PU1, MCU_NOTE_ON):
+			PU1.period = period;
+			envelope_on(&PU1.envelope, MAX_VOLUME);
+			pu1_update_env();
+			pu1_trigger();
+			break;
+		case PROTO_HDR(INSTR_PU2, MCU_NOTE_ON):
+			PU2.period = period;
+			envelope_on(&PU2.envelope, MAX_VOLUME);
+			pu2_update_env();
+			pu2_trigger();
+			break;
+		case PROTO_HDR(INSTR_WAV, MCU_NOTE_ON):
+			WAV.period = period;
+			wav_trigger();
+			break;
+		}
 		rx.state = RX_IDLE;
 		break;
+	}
 	case RX_VAL:
-		set_param(proto_instr(rx.hdr), proto_cmd(rx.hdr), byte);
+		switch (rx.hdr) {
+		case PROTO_HDR(INSTR_PU1, CMD_ATTACK):
+			PU1.envelope.attack = byte;
+			break;
+		case PROTO_HDR(INSTR_PU1, CMD_DECAY):
+			PU1.envelope.decay = byte;
+			break;
+		case PROTO_HDR(INSTR_PU1, CMD_SUSTAIN):
+			PU1.envelope.sustain = byte;
+			break;
+		case PROTO_HDR(INSTR_PU1, CMD_RELEASE):
+			PU1.envelope.release = byte;
+			break;
+		case PROTO_HDR(INSTR_PU1, PU1_DUTY_CYCLE):
+			pu1_set_duty_cycle((enum duty_cycle)byte);
+			break;
+		case PROTO_HDR(INSTR_PU1, PU1_SWEEP):
+			PU1.nr10 = byte;
+			NR10_REG = byte;
+			break;
+		case PROTO_HDR(INSTR_PU2, CMD_ATTACK):
+			PU2.envelope.attack = byte;
+			break;
+		case PROTO_HDR(INSTR_PU2, CMD_DECAY):
+			PU2.envelope.decay = byte;
+			break;
+		case PROTO_HDR(INSTR_PU2, CMD_SUSTAIN):
+			PU2.envelope.sustain = byte;
+			break;
+		case PROTO_HDR(INSTR_PU2, CMD_RELEASE):
+			PU2.envelope.release = byte;
+			break;
+		case PROTO_HDR(INSTR_PU2, PU2_DUTY_CYCLE):
+			pu2_set_duty_cycle((enum duty_cycle)byte);
+			break;
+		case PROTO_HDR(INSTR_WAV, CMD_VOLUME):
+			wav_set_volume(byte);
+			break;
+		}
 		rx.state = RX_IDLE;
 		break;
 	case RX_WAVE:
