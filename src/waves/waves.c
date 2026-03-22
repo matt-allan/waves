@@ -195,7 +195,6 @@ void serial_isr(void)
 		/* WAV_SET_WAVE — 16-byte payload */
 		case PROTO_HDR(INSTR_WAV, WAV_SET_WAVE):
 			rx.wave_idx = 0;
-			NR30_REG = 0x00;
 			rx.state = RX_WAVE;
 			break;
 		/*
@@ -282,9 +281,8 @@ void serial_isr(void)
 		break;
 	case RX_WAVE:
 		WAV.wave[rx.wave_idx] = byte;
-		((unsigned char *)0xFF30)[rx.wave_idx] = byte;
 		if (++rx.wave_idx == 16) {
-			NR30_REG = 0x80;
+			wav_set_wave_data(WAV.wave);
 			rx.state = RX_IDLE;
 		}
 		break;
