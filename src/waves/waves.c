@@ -8,6 +8,7 @@
 // #include <gbdk/console.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 // #include <stdio.h>
 
 uint8_t last_keys = 0;
@@ -142,13 +143,12 @@ void wav_set_volume(uint8_t volume)
 	NR32_REG = (volume << 5);
 }
 
-void wav_set_wave_data(uint8_t wave_data[16])
-{	
+void wav_load_wave_ram(void)
+{
 	NR30_REG = 0x00;
 	unsigned char *wave_ram = (unsigned char *)0xFF30;
 	for (uint8_t i = 0; i < 16; i++) {
-		*wave_ram = wave_data[i];
-		WAV.wave[i] = wave_data[i];
+		*wave_ram = WAV.wave[i];
 		wave_ram++;
 	}
 	NR30_REG = 0x80;
@@ -282,7 +282,7 @@ void serial_isr(void)
 	case RX_WAVE:
 		WAV.wave[rx.wave_idx] = byte;
 		if (++rx.wave_idx == 16) {
-			wav_set_wave_data(WAV.wave);
+			wav_load_wave_ram();
 			rx.state = RX_IDLE;
 		}
 		break;
@@ -335,7 +335,8 @@ void main(void)
 				0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
 
 	WAV.period = 1379;
-	wav_set_wave_data(saw_wave);
+	memcpy(WAV.wave, saw_wave, sizeof(WAV.wave));
+	wav_load_wave_ram();
 
 	while (1) {
 		update_keys();
@@ -351,10 +352,12 @@ void main(void)
 
 				// wav_set_volume(1);
 
-				// wav_set_wave_data(saw_wave_half);
+				// memcpy(WAV.wave, saw_wave_half, sizeof(WAV.wave));
+				// wav_load_wave_ram();
 				// wav_trigger();
 				// delay(800);
-				// wav_set_wave_data(saw_wave);
+				// memcpy(WAV.wave, saw_wave, sizeof(WAV.wave));
+				// wav_load_wave_ram();
 				// wav_trigger();
 			}
 		} else if (key_released(J_A)) {
