@@ -7,7 +7,7 @@
 
 /**
  * Covers notes from C3 to B8.
- * 
+ *
  * @see http://www.devrs.com/gb/files/sndtab.html
  */
 const uint16_t frequencies[] = {
@@ -19,10 +19,6 @@ const uint16_t frequencies[] = {
   1985, 1988, 1992, 1995, 1998, 2001, 2004, 2006, 2009, 2011, 2013, 2015
 };
 
-enum sweep_dir {
-	SWEEP_DIR_INCR = 0,
-	SWEEP_DIR_DECR = 1,
-};
 
 enum duty_cycle {
 	DUTY_CYCLE_12_5 = 0,
@@ -31,16 +27,10 @@ enum duty_cycle {
 	DUTY_CYCLE_75 = 3,
 };
 
-struct sweep {
-	uint8_t pace;
-	enum sweep_dir dir;
-	uint8_t step;
-};
-
 struct pulse1 {
 	uint16_t period;
 	enum duty_cycle duty_cycle;
-	struct sweep sweep;
+	uint8_t nr10; /* full NR10 sweep register value, written directly */
 	struct envelope envelope;
 };
 

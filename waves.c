@@ -1,5 +1,6 @@
 #include "waves.h"
 #include "envelope.h"
+#include "protocol.h"
 #include <asm/types.h>
 #include <assert.h>
 #include <gb/gb.h>
@@ -15,6 +16,8 @@ uint8_t keys = 0;
 struct pulse1 PU1 = {.envelope = {0}};
 
 struct pulse2 PU2 = {.envelope = {0}};
+
+static struct rx_buf rx;
 
 struct wave WAV = {
     .wave = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
@@ -58,17 +61,13 @@ inline void apu_enable(void)
 
 inline uint8_t env_reg_val(struct envelope *env)
 {
-	return (env->start_volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
+	return (env->volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
 }
 
-void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
+void pu1_set_sweep(uint8_t nr10)
 {
-	struct sweep *sweep = &PU1.sweep;
-	sweep->pace = pace;
-	sweep->dir = dir;
-	sweep->step = step;
-
-	NR10_REG = (pace << 4) | (dir << 3) | step;
+	PU1.nr10 = nr10;
+	NR10_REG = nr10;
 }
 
 void pu1_set_duty_cycle(enum duty_cycle duty)
@@ -156,10 +155,159 @@ void wav_trigger(void)
 	NR34_REG = (1 << 7) | (len_en << 6) | (period >> 8);
 }
 
+static void note_on(enum instrument instr, uint16_t period)
+{
+	switch (instr) {
+	case INSTR_PU1:
+		PU1.period = period;
+		envelope_on(&PU1.envelope, MAX_VOLUME);
+		pu1_update_env();
+		pu1_trigger();
+		break;
+	case INSTR_PU2:
+		PU2.period = period;
+		envelope_on(&PU2.envelope, MAX_VOLUME);
+		pu2_update_env();
+		pu2_trigger();
+		break;
+	case INSTR_WAV:
+		WAV.period = period;
+		wav_trigger();
+		break;
+	case INSTR_NOISE:
+		break;
+	}
+}
+
+static void note_off(enum instrument instr)
+{
+	switch (instr) {
+	case INSTR_PU1:
+		envelope_off(&PU1.envelope);
+		pu1_update_env();
+		pu1_trigger();
+		break;
+	case INSTR_PU2:
+		envelope_off(&PU2.envelope);
+		pu2_update_env();
+		pu2_trigger();
+		break;
+	case INSTR_WAV:
+		wav_set_volume(0);
+		break;
+	case INSTR_NOISE:
+		break;
+	}
+}
+
+static void set_param(enum instrument instr, uint8_t cmd, uint8_t value)
+{
+	switch (cmd) {
+	case CMD_ATTACK:
+		if (instr == INSTR_PU1)
+			PU1.envelope.attack = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.attack = value;
+		break;
+	case CMD_DECAY:
+		if (instr == INSTR_PU1)
+			PU1.envelope.decay = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.decay = value;
+		break;
+	case CMD_SUSTAIN:
+		if (instr == INSTR_PU1)
+			PU1.envelope.sustain = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.sustain = value;
+		break;
+	case CMD_RELEASE:
+		if (instr == INSTR_PU1)
+			PU1.envelope.release = value;
+		else if (instr == INSTR_PU2)
+			PU2.envelope.release = value;
+		break;
+	case CMD_VOLUME:
+		if (instr == INSTR_WAV)
+			wav_set_volume(value);
+		break;
+	case PU1_DUTY_CYCLE: /* == PU2_DUTY_CYCLE == WAV_SET_WAVE == NOISE_CTRL == 25 */
+		if (instr == INSTR_PU1)
+			pu1_set_duty_cycle((enum duty_cycle)value);
+		else if (instr == INSTR_PU2)
+			pu2_set_duty_cycle((enum duty_cycle)value);
+		/* WAV_SET_WAVE handled by RX_WAVE state; NOISE_CTRL: stub */
+		break;
+	case PU1_SWEEP: /* 26, PU1 only */
+		if (instr == INSTR_PU1) {
+			PU1.nr10 = value;
+			NR10_REG = value;
+		}
+		break;
+	}
+}
+
+void serial_isr(void)
+{
+	uint8_t byte = SB_REG;
+	uint8_t cmd;
+
+	switch (rx.state) {
+	case RX_IDLE:
+		rx.hdr = byte;
+		cmd = proto_cmd(byte);
+		if (cmd == MCU_NOTE_ON) {
+			rx.state = RX_NOTE_HI;
+		} else if (cmd == MCU_NOTE_OFF) {
+			note_off(proto_instr(byte));
+		} else if (cmd >= CMD_CHAN_VOLUME && cmd <= PU1_SWEEP) {
+			/*
+			 * Param slots 2–26 all carry one value byte, except
+			 * WAV_SET_WAVE (slot 25 on WAV) which streams 16 bytes
+			 * of wave RAM.  Reserved slots 0–1 and 27–31 are
+			 * ignored so that idle-line 0xFF bytes (cmd=31) do not
+			 * corrupt the state machine.
+			 */
+			if (proto_instr(byte) == INSTR_WAV &&
+			    cmd == WAV_SET_WAVE) {
+				rx.wave_idx = 0;
+				NR30_REG = 0x00;
+				rx.state = RX_WAVE;
+			} else {
+				rx.state = RX_VAL;
+			}
+		}
+		/* unknown/reserved cmd: stay in RX_IDLE */
+		break;
+	case RX_NOTE_HI:
+		rx.period_hi = byte;
+		rx.state = RX_NOTE_LO;
+		break;
+	case RX_NOTE_LO:
+		note_on(proto_instr(rx.hdr),
+			((uint16_t)(rx.period_hi & 0x07) << 8) | byte);
+		rx.state = RX_IDLE;
+		break;
+	case RX_VAL:
+		set_param(proto_instr(rx.hdr), proto_cmd(rx.hdr), byte);
+		rx.state = RX_IDLE;
+		break;
+	case RX_WAVE:
+		WAV.wave[rx.wave_idx] = byte;
+		((unsigned char *)0xFF30)[rx.wave_idx] = byte;
+		if (++rx.wave_idx == 16) {
+			NR30_REG = 0x80;
+			rx.state = RX_IDLE;
+		}
+		break;
+	}
+
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+}
+
 void tim(void)
 {
-	uint8_t env_val;
-
 	if (envelope_tick(&PU1.envelope)) {
 		pu1_update_env();
 		pu1_trigger();
@@ -176,10 +324,13 @@ void main(void)
 	CRITICAL
 	{
 		add_TIM(tim);
+		add_SIO(serial_isr);
 	}
 	timer_enable();
 	apu_enable();
-	set_interrupts(VBL_IFLAG | TIM_IFLAG);
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* start first transfer; use 0x80 for external MCU clock */
+	set_interrupts(VBL_IFLAG | TIM_IFLAG | SIO_IFLAG);
 	enable_interrupts();
 
 	PU1.period = 1046;

@@ -30,7 +30,8 @@ struct harness {
 	 * Serial bit engine
 	 *
 	 * TX path (MCU → GB): bytes in tx_queue are clocked out MSB-first,
-	 * one bit per transfer, driven by the bit_end callback.
+	 * one byte per 8-bit transfer, starting only at the MSB edge so that
+	 * a late enqueue never splits a byte across two transfers.
 	 *
 	 * RX path (GB → MCU): bits arriving in bit_start are accumulated
 	 * MSB-first; completed bytes are pushed to rx_queue.
@@ -40,6 +41,7 @@ struct harness {
 	int     tx_tail;          /* next slot to write */
 	uint8_t tx_byte;          /* byte currently being clocked out */
 	int     tx_bit;           /* bit index 7..0; -1 = idle */
+	int     tx_xfer;          /* transfer position 7..0; 7 = MSB/start  */
 
 	uint8_t rx_queue[HARNESS_SERIAL_QUEUE_LEN];
 	int     rx_head;
@@ -61,6 +63,19 @@ static inline int queue_free(int head, int tail, int cap)
 {
 	return cap - 1 - queue_used(head, tail, cap);
 }
+
+/*
+ * Minimal DMG boot ROM stub — all NOPs except for the last four bytes
+ * which write 1 to 0xFF50 (disabling the boot ROM mapping) and let the
+ * CPU fall through to address 0x0100 (game entry point).
+ *
+ *   0x00FC: LD A, 1       (3E 01)
+ *   0x00FE: LDH (0x50), A (E0 50)
+ */
+static const uint8_t boot_rom_stub[256] = {
+	[0xFC] = 0x3E, [0xFD] = 0x01, /* LD A, 1          */
+	[0xFE] = 0xE0, [0xFF] = 0x50, /* LDH (0x50), A    */
+};
 
 /* ---------------------------------------------------------------------- */
 /* SameBoy callbacks                                                        */
@@ -127,22 +142,37 @@ static void cb_serial_bit_start(GB_gameboy_t *gb, bool bit_to_send)
 /*
  * bit_end_callback — called when the GB expects to latch the incoming bit.
  * Return the next bit from our TX queue (MSB first), or 1 (idle) if none.
+ *
+ * Bytes are loaded from the queue only at the start of a new 8-bit
+ * transfer (tx_xfer == 7 == MSB position).  This prevents a byte that
+ * is enqueued mid-transfer from being split across two transfers and
+ * corrupting the receiver's state machine.
  */
 static bool cb_serial_bit_end(GB_gameboy_t *gb)
 {
 	struct harness *h = GB_get_user_data(gb);
 
-	/* Load next byte from tx_queue if we are idle */
-	if (h->tx_bit < 0) {
-		if (h->tx_head == h->tx_tail)
-			return true; /* nothing queued — idle line */
-		h->tx_byte = h->tx_queue[h->tx_head];
-		h->tx_head = (h->tx_head + 1) % HARNESS_SERIAL_QUEUE_LEN;
-		h->tx_bit  = 7; /* will return bit 7 this call */
+	/* Only load at the MSB edge of a new transfer so a byte enqueued
+	 * mid-transfer is never split across two consecutive transfers. */
+	if (h->tx_xfer == 7 && h->tx_bit < 0) {
+		if (h->tx_head != h->tx_tail) {
+			h->tx_byte = h->tx_queue[h->tx_head];
+			h->tx_head = (h->tx_head + 1) % HARNESS_SERIAL_QUEUE_LEN;
+			h->tx_bit  = 7; /* will return bit 7 this call */
+		}
 	}
 
-	bool bit = (h->tx_byte >> h->tx_bit) & 1;
-	h->tx_bit--;
+	bool bit;
+	if (h->tx_bit >= 0) {
+		bit = (h->tx_byte >> h->tx_bit) & 1;
+		h->tx_bit--;
+	} else {
+		bit = true; /* idle line high */
+	}
+
+	/* Advance the transfer position counter (wraps 0 → 7). */
+	h->tx_xfer = (h->tx_xfer == 0) ? 7 : (h->tx_xfer - 1);
+
 	return bit;
 }
 
@@ -158,7 +188,8 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 		return NULL;
 	}
 
-	h->tx_bit = -1; /* no byte in flight */
+	h->tx_bit  = -1; /* no byte in flight */
+	h->tx_xfer = 7;  /* next bit_end call is the MSB of a new transfer */
 
 	h->gb = GB_init(GB_alloc(), GB_MODEL_DMG_B);
 	if (!h->gb) {
@@ -183,7 +214,7 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 	GB_set_serial_transfer_bit_start_callback(h->gb, cb_serial_bit_start);
 	GB_set_serial_transfer_bit_end_callback(h->gb, cb_serial_bit_end);
 
-	/* Boot ROM (optional) */
+	/* Boot ROM: use provided image or the built-in stub (see boot_rom_stub). */
 	if (boot_rom_path) {
 		if (GB_load_boot_rom(h->gb, boot_rom_path) != 0) {
 			fprintf(stderr, "harness: failed to load boot ROM: %s\n",
@@ -192,6 +223,9 @@ struct harness *harness_new(const char *rom_path, const char *boot_rom_path)
 			free(h);
 			return NULL;
 		}
+	} else {
+		GB_load_boot_rom_from_buffer(h->gb, boot_rom_stub,
+		                             sizeof(boot_rom_stub));
 	}
 
 	/* Game ROM */
