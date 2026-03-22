@@ -70,10 +70,12 @@ inline uint8_t env_reg_val(struct envelope *env)
 	return (env->volume << 4) | (env->direction << 3) | (env->sweep_pace & 0x7);
 }
 
-void pu1_set_sweep(uint8_t nr10)
+void pu1_set_sweep(uint8_t pace, enum sweep_dir dir, uint8_t step)
 {
-	PU1.nr10 = nr10;
-	NR10_REG = nr10;
+	PU1.sweep.pace = pace;
+	PU1.sweep.dir = dir;
+	PU1.sweep.step = step;
+	NR10_REG = (pace << 4) | (dir << 3) | step;
 }
 
 void pu1_set_duty_cycle(enum duty_cycle duty)
@@ -140,13 +142,12 @@ void wav_set_volume(uint8_t volume)
 	NR32_REG = (volume << 5);
 }
 
-void wav_set_wave_data(uint8_t wave_data[16])
-{	
+void wav_load_wave_ram(void)
+{
 	NR30_REG = 0x00;
 	unsigned char *wave_ram = (unsigned char *)0xFF30;
 	for (uint8_t i = 0; i < 16; i++) {
-		*wave_ram = wave_data[i];
-		WAV.wave[i] = wave_data[i];
+		*wave_ram = WAV.wave[i];
 		wave_ram++;
 	}
 	NR30_REG = 0x80;
@@ -193,7 +194,6 @@ void serial_isr(void)
 		/* WAV_SET_WAVE — 16-byte payload */
 		case PROTO_HDR(INSTR_WAV, WAV_SET_WAVE):
 			rx.wave_idx = 0;
-			NR30_REG = 0x00;
 			rx.state = RX_WAVE;
 			break;
 		/*
@@ -255,8 +255,9 @@ void serial_isr(void)
 			pu1_set_duty_cycle((enum duty_cycle)byte);
 			break;
 		case PROTO_HDR(INSTR_PU1, PU1_SWEEP):
-			PU1.nr10 = byte;
-			NR10_REG = byte;
+			pu1_set_sweep((byte >> 4) & 0x7,
+				      (enum sweep_dir)((byte >> 3) & 0x1),
+				      byte & 0x7);
 			break;
 		case PROTO_HDR(INSTR_PU2, CMD_ATTACK):
 			PU2.envelope.attack = byte;
@@ -281,9 +282,8 @@ void serial_isr(void)
 		break;
 	case RX_WAVE:
 		WAV.wave[rx.wave_idx] = byte;
-		((unsigned char *)0xFF30)[rx.wave_idx] = byte;
 		if (++rx.wave_idx == 16) {
-			NR30_REG = 0x80;
+			wav_load_wave_ram();
 			rx.state = RX_IDLE;
 		}
 		break;
@@ -330,13 +330,8 @@ void main(void)
 	PU2.envelope.sustain = 2;
 	PU2.envelope.release = 7;
 
-	uint8_t saw_wave_half[16] = {0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
-
-	uint8_t saw_wave[16] = {0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
-				0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
-
 	WAV.period = 1379;
-	wav_set_wave_data(saw_wave);
+	wav_load_wave_ram();
 
 	while (1) {
 		update_keys();
@@ -352,10 +347,8 @@ void main(void)
 
 				// wav_set_volume(1);
 
-				// wav_set_wave_data(saw_wave_half);
+				// wav_load_wave_ram();
 				// wav_trigger();
-				// delay(800);
-				// wav_set_wave_data(saw_wave);
 				// wav_trigger();
 			}
 		} else if (key_released(J_A)) {
