@@ -39,7 +39,7 @@ struct envelope
 	uint8_t attack;
 	/** Decay sweep pace (1-7) */
 	uint8_t decay;
-	/** Sustain volume difference from attack volume */
+	/** Sustain volume level (0-15) */
 	uint8_t sustain;
 	/** Release pace (1-7) */
 	uint8_t release;

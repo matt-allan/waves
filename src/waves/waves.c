@@ -58,6 +58,12 @@ inline void apu_enable(void)
 	NR50_REG = 0x77; // max volume L&R
 }
 
+static inline void serial_arm(void)
+{
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+}
+
 
 inline uint8_t env_reg_val(struct envelope *env)
 {
@@ -302,8 +308,7 @@ void serial_isr(void)
 		break;
 	}
 
-	SB_REG = 0xFF;
-	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+	serial_arm();
 }
 
 void tim(void)
@@ -328,8 +333,7 @@ void main(void)
 	}
 	timer_enable();
 	apu_enable();
-	SB_REG = 0xFF;
-	SC_REG = 0x81; /* start first transfer; use 0x80 for external MCU clock */
+	serial_arm();
 	set_interrupts(VBL_IFLAG | TIM_IFLAG | SIO_IFLAG);
 	enable_interrupts();
 
