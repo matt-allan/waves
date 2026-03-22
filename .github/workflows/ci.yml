@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y sdcc gcc g++ clang cmake libpng-dev
+          sudo apt-get install -y sdcc gcc g++ clang cmake libpng-dev ninja-build
 
       - name: Cache tools
         uses: actions/cache@v4
@@ -27,8 +27,11 @@ jobs:
       - name: Install tools
         run: python3 scripts/install_tools.py
 
+      - name: Configure
+        run: python3 configure.py
+
       - name: Build ROM
-        run: make
+        run: ninja
 
       - name: Build and run tests
-        run: make test
+        run: ninja test/test_basic && WAVES_ROM=waves.gb test/test_basic

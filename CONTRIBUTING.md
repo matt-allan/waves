@@ -11,7 +11,7 @@ git submodule update --init --recursive
 Install host build dependencies (Ubuntu/Debian):
 
 ```sh
-sudo apt install sdcc gcc clang cmake libpng-dev
+sudo apt install sdcc gcc clang cmake libpng-dev ninja-build
 ```
 
 Install the toolchain (GBDK and cppp) into `tools/`:
@@ -23,13 +23,14 @@ python3 scripts/install_tools.py
 Then build the ROM:
 
 ```sh
-make
+python3 configure.py
+ninja
 ```
 
 Run the test suite:
 
 ```sh
-make test
+ninja test/test_basic && WAVES_ROM=waves.gb test/test_basic
 ```
 
 ## Guidelines
