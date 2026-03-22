@@ -8,6 +8,8 @@
 *.noi
 test/test_basic
 build/
+build.ninja
 tools/
 vendor/cppp/cppp
 vendor/cppp/*.o
+__pycache__/
