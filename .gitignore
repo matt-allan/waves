@@ -12,3 +12,4 @@ build.ninja
 tools/
 vendor/cppp/cppp
 vendor/cppp/*.o
+__pycache__/
