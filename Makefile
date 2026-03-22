@@ -2,7 +2,7 @@ GBDK_HOME ?= tools/gbdk/
 
 CC       := $(GBDK_HOME)bin/lcc
 ROMUSAGE := $(GBDK_HOME)bin/romusage
-CFLAGS   := -Wa-l -Wl-m -Wl-j -msm83:gb
+CFLAGS   := -Wa-l -Wl-m -Wl-j -msm83:gb -Iwaves/src
 
 ifdef DEBUG
 	CFLAGS += -debug -v
@@ -15,7 +15,7 @@ SAMEBOY_LIB  := $(SAMEBOY_ROOT)/build/lib/libsameboy.a
 SAMEBOY_INC  := $(SAMEBOY_ROOT)/build/include
 
 TEST_CC      := gcc
-TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest -I.
+TEST_CFLAGS  := -std=c11 -Wall -Wextra -I$(SAMEBOY_INC) -Itest -Iwaves/src
 TEST_LDFLAGS := -lm
 
 TESTS := test/test_basic
@@ -23,23 +23,24 @@ TESTS := test/test_basic
 .PHONY: all
 all: $(GAME).gb
 
-$(GAME).gb: waves.o envelope.o
+$(GAME).gb: waves/src/waves.o waves/src/envelope.o
 	$(CC) $(CFLAGS) -o $@ $^
 	$(ROMUSAGE) $(GAME).map
 
-waves.o: waves.c waves.h envelope.h protocol.h
+waves/src/waves.o: waves/src/waves.c waves/src/waves.h waves/src/envelope.h waves/src/protocol.h
 
-envelope.o: envelope.c envelope.h
+waves/src/envelope.o: waves/src/envelope.c waves/src/envelope.h
 
-%.o: %.c
+waves/src/%.o: waves/src/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-%.o: %.s
+waves/src/%.o: waves/src/%.s
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY: clean
 clean:
-	rm -f *.o *.lst *.map *.gb *.ihx *.sym *.cdb *.adb *.asm *.noi *.rst
+	rm -f waves/src/*.o waves/src/*.lst waves/src/*.asm waves/src/*.rst waves/src/*.sym
+	rm -f *.map *.gb *.ihx *.sym *.noi
 	rm -f test/*.o $(TESTS)
 
 .PHONY: run
@@ -56,7 +57,7 @@ $(SAMEBOY_LIB):
 test/harness.o: test/harness.c test/harness.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
-test/test_basic.o: test/test_basic.c test/harness.h protocol.h | $(SAMEBOY_LIB)
+test/test_basic.o: test/test_basic.c test/harness.h waves/src/protocol.h | $(SAMEBOY_LIB)
 	$(TEST_CC) $(TEST_CFLAGS) -c $< -o $@
 
 test/test_basic: test/test_basic.o test/harness.o $(SAMEBOY_LIB)
