@@ -8,7 +8,6 @@
 // #include <gbdk/console.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 // #include <stdio.h>
 
 uint8_t last_keys = 0;
@@ -21,8 +20,8 @@ struct pulse2 PU2 = {.envelope = {0}};
 static struct rx_buf rx;
 
 struct wave WAV = {
-    .wave = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-	     0xFF, 0x00, 0xFF, 0x00, 0xFF},
+    .wave = {0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
+	     0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10},
 };
 
 inline void update_keys(void)
@@ -329,13 +328,7 @@ void main(void)
 	PU2.envelope.sustain = 2;
 	PU2.envelope.release = 7;
 
-	uint8_t saw_wave_half[16] = {0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
-
-	uint8_t saw_wave[16] = {0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
-				0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
-
 	WAV.period = 1379;
-	memcpy(WAV.wave, saw_wave, sizeof(WAV.wave));
 	wav_load_wave_ram();
 
 	while (1) {
@@ -352,12 +345,8 @@ void main(void)
 
 				// wav_set_volume(1);
 
-				// memcpy(WAV.wave, saw_wave_half, sizeof(WAV.wave));
 				// wav_load_wave_ram();
 				// wav_trigger();
-				// delay(800);
-				// memcpy(WAV.wave, saw_wave, sizeof(WAV.wave));
-				// wav_load_wave_ram();
 				// wav_trigger();
 			}
 		} else if (key_released(J_A)) {
