@@ -34,4 +34,4 @@ jobs:
         run: ninja
 
       - name: Build and run tests
-        run: ninja test/test_basic && WAVES_ROM=waves.gb test/test_basic
+        run: ninja build/test/test_basic && WAVES_ROM=build/waves.gb build/test/test_basic

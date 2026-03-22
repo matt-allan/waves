@@ -1,18 +1,18 @@
 /*
- * harness.h — SameBoy-backed test harness for waves.gb
+ * emulator.h — SameBoy-backed emulator for waves.gb
  *
- * The harness loads waves.gb into a SameBoy emulator instance and
- * exposes the three test-observable surfaces:
+ * The emulator loads waves.gb into a SameBoy instance and
+ * exposes the three observable surfaces:
  *
  *   1. Link port  — queue bytes to send as the MCU; receive bytes the
  *                   GB sends back.
  *   2. Audio      — drain buffered PCM samples (stereo int16).
  *   3. Screen     — read the 160×144 RGBA framebuffer or save a PPM.
  *
- * One harness = one GB instance running waves.gb.  Not thread-safe.
+ * One emulator = one GB instance running waves.gb.  Not thread-safe.
  */
-#ifndef WAVES_HARNESS_H
-#define WAVES_HARNESS_H
+#ifndef WAVES_EMULATOR_H
+#define WAVES_EMULATOR_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -22,13 +22,13 @@
 #include <sameboy/gb.h>
 
 /* ---------------------------------------------------------------------- */
-/* Harness object                                                           */
+/* Emulator object                                                           */
 /* ---------------------------------------------------------------------- */
 
-struct harness;
+struct emulator;
 
 /**
- * Allocate and initialise a harness.
+ * Allocate and initialise a emulator.
  *
  * rom_path is the path to waves.gb (must exist).  boot_rom_path is the
  * path to a DMG boot ROM image, or NULL to use a minimal built-in stub
@@ -37,13 +37,13 @@ struct harness;
  *
  * Returns NULL on failure (error printed to stderr).
  */
-struct harness *harness_new(const char *rom_path, const char *boot_rom_path);
+struct emulator *emulator_new(const char *rom_path, const char *boot_rom_path);
 
 /**
- * Destroy a harness and release all resources.
+ * Destroy a emulator and release all resources.
  * Safe to call with NULL.
  */
-void harness_free(struct harness *h);
+void emulator_free(struct emulator *h);
 
 /* ---------------------------------------------------------------------- */
 /* Emulation control                                                        */
@@ -53,75 +53,75 @@ void harness_free(struct harness *h);
  * Advance the emulator by exactly n vblank frames.
  * Each frame is roughly 16.7 ms of Game Boy time (~59.7 fps).
  */
-void harness_run_frames(struct harness *h, int n);
+void emulator_run_frames(struct emulator *h, int n);
 
 /* ---------------------------------------------------------------------- */
 /* Link port (serial) — MCU side                                            */
 /* ---------------------------------------------------------------------- */
 
-enum { HARNESS_SERIAL_QUEUE_LEN = 256 };
+enum { EMULATOR_SERIAL_QUEUE_LEN = 256 };
 
 /**
  * Add one byte to the outgoing (MCU→GB) queue.
  *
  * The byte will be clocked into the GB one bit at a time as the GB's
  * serial hardware initiates transfers.  The queue holds up to
- * HARNESS_SERIAL_QUEUE_LEN bytes; enqueueing beyond that is silently
+ * EMULATOR_SERIAL_QUEUE_LEN bytes; enqueueing beyond that is silently
  * dropped (test code should not overflow it).
  */
-void harness_serial_enqueue(struct harness *h, uint8_t byte);
+void emulator_serial_enqueue(struct emulator *h, uint8_t byte);
 
 /**
  * Pop one byte received from the GB.
  * Returns true and writes *out on success; returns false if the queue
  * is empty.
  */
-bool harness_serial_dequeue(struct harness *h, uint8_t *out);
+bool emulator_serial_dequeue(struct emulator *h, uint8_t *out);
 
 /* ---------------------------------------------------------------------- */
 /* Screen capture                                                           */
 /* ---------------------------------------------------------------------- */
 
 /* Native GB screen dimensions */
-enum { HARNESS_SCREEN_W = 160, HARNESS_SCREEN_H = 144 };
+enum { EMULATOR_SCREEN_W = 160, EMULATOR_SCREEN_H = 144 };
 
 /**
  * Pointer to the latest completed frame.
  *
- * Layout: HARNESS_SCREEN_W * HARNESS_SCREEN_H uint32_t pixels, row-major,
+ * Layout: EMULATOR_SCREEN_W * EMULATOR_SCREEN_H uint32_t pixels, row-major,
  * top-left first.  Each pixel is 0xFFRRGGBB (alpha always 0xFF).
- * Valid until the next call to harness_run_frames().
+ * Valid until the next call to emulator_run_frames().
  */
-const uint32_t *harness_get_framebuffer(const struct harness *h);
+const uint32_t *emulator_get_framebuffer(const struct emulator *h);
 
 /**
  * Write the current framebuffer to a plain-text PPM file (P3 format).
  * Useful for manual inspection during test development.
  * Returns 0 on success, -1 on I/O error.
  */
-int harness_save_ppm(const struct harness *h, const char *path);
+int emulator_save_ppm(const struct emulator *h, const char *path);
 
 /* ---------------------------------------------------------------------- */
 /* Audio capture                                                            */
 /* ---------------------------------------------------------------------- */
 
-static const int HARNESS_SAMPLE_RATE = 44100;
-enum { HARNESS_AUDIO_BUF_LEN = 8192 }; /* ring buffer capacity in samples */
+static const int EMULATOR_SAMPLE_RATE = 44100;
+enum { EMULATOR_AUDIO_BUF_LEN = 8192 }; /* ring buffer capacity in samples */
 
 /**
  * Copy up to max_samples audio samples from the internal ring buffer
  * into buf.
  *
  * Returns the number of samples actually copied.  Drained samples are
- * removed from the buffer.  Sample rate is fixed at HARNESS_SAMPLE_RATE;
+ * removed from the buffer.  Sample rate is fixed at EMULATOR_SAMPLE_RATE;
  * each GB_sample_t holds one stereo pair of signed 16-bit PCM values.
  */
-size_t harness_drain_audio(struct harness *h, GB_sample_t *buf,
+size_t emulator_drain_audio(struct emulator *h, GB_sample_t *buf,
 			   size_t max_samples);
 
 /**
  * Number of samples currently in the buffer.
  */
-size_t harness_audio_available(const struct harness *h);
+size_t emulator_audio_available(const struct emulator *h);
 
-#endif /* WAVES_HARNESS_H */
+#endif /* WAVES_EMULATOR_H */

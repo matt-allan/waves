@@ -37,6 +37,8 @@ n.build('build.ninja', 'configure',
 n.newline()
 
 n.variable('python', sys.executable)
+n.variable('builddir', 'build')
+n.newline()
 
 # --- ROM toolchain ---
 
@@ -48,7 +50,8 @@ n.variable('gbdk_home', gbdk_home)
 n.variable('cc', '${gbdk_home}bin/lcc')
 n.variable('romusage', '${gbdk_home}bin/romusage')
 
-cflags = ['-Wa-l', '-Wl-m', '-Wl-j', '-msm83:gb']
+cflags = ['-Wa-l', '-Wl-m', '-Wl-j', '-msm83:gb',
+          '-Isrc/waves', '-Isrc/midilink']
 if args.debug:
     cflags += ['-debug', '-v']
 n.variable('cflags', cflags)
@@ -68,17 +71,19 @@ n.newline()
 
 game = 'waves'
 
-n.build('waves.o', 'cc_gb', 'waves.c',
-        implicit=['waves.h', 'envelope.h', 'protocol.h'])
-n.build('envelope.o', 'cc_gb', 'envelope.c',
-        implicit=['envelope.h'])
+n.build('$builddir/waves.o', 'cc_gb', 'src/waves/waves.c',
+        implicit=['src/waves/waves.h', 'src/waves/envelope.h',
+                  'src/midilink/protocol.h'])
+n.build('$builddir/envelope.o', 'cc_gb', 'src/waves/envelope.c',
+        implicit=['src/waves/envelope.h'])
 n.newline()
 
-n.build(game + '.gb', 'link_gb', ['waves.o', 'envelope.o'],
-        variables={'mapfile': game + '.map'})
+n.build('$builddir/' + game + '.gb', 'link_gb',
+        ['$builddir/waves.o', '$builddir/envelope.o'],
+        variables={'mapfile': '$builddir/' + game + '.map'})
 n.newline()
 
-n.default(game + '.gb')
+n.default('$builddir/' + game + '.gb')
 n.newline()
 
 # --- Test toolchain ---
@@ -89,7 +94,7 @@ sameboy_inc = os.path.join(sameboy_root, 'build', 'include')
 
 n.variable('test_cc', 'gcc')
 n.variable('test_cflags', '-std=c11 -Wall -Wextra -I' + sameboy_inc +
-           ' -Itest -I.')
+           ' -Isrc/emulator -Isrc/midilink')
 n.variable('test_ldflags', '-lm')
 n.newline()
 
@@ -116,16 +121,17 @@ n.newline()
 
 # --- Test build edges ---
 
-n.build('test/harness.o', 'cc_host', 'test/harness.c',
-        implicit=['test/harness.h'],
+n.build('$builddir/test/emulator.o', 'cc_host', 'src/emulator/emulator.c',
+        implicit=['src/emulator/emulator.h'],
         order_only=[sameboy_lib])
-n.build('test/test_basic.o', 'cc_host', 'test/test_basic.c',
-        implicit=['test/harness.h', 'protocol.h'],
+n.build('$builddir/test/test_basic.o', 'cc_host', 'test/test_basic.c',
+        implicit=['src/emulator/emulator.h', 'src/midilink/protocol.h'],
         order_only=[sameboy_lib])
 n.newline()
 
-n.build('test/test_basic', 'link_host',
-        ['test/test_basic.o', 'test/harness.o', sameboy_lib])
+n.build('$builddir/test/test_basic', 'link_host',
+        ['$builddir/test/test_basic.o', '$builddir/test/emulator.o',
+         sameboy_lib])
 n.newline()
 
 n.close()
