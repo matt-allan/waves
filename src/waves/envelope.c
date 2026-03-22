@@ -28,7 +28,7 @@ void envelope_decay(struct envelope *env)
 	env->direction = ENV_DIR_DOWN;
 	env->sweep_pace = env->sweep_timer = decay;
 	env->start_volume = env->volume;
-	env->target_volume = env->volume - env->sustain;
+	env->target_volume = env->sustain;
 }
 
 void envelope_sustain(struct envelope *env)

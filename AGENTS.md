@@ -30,7 +30,7 @@ ninja
 Run the test suite:
 
 ```sh
-ninja build/lib/libsameboy.so && PYTHONPATH=src WAVES_ROM=build/waves.gb python3 test/test_emulator_py.py
+ninja build/lib/libsameboy.so && PYTHONPATH=src WAVES_ROM=build/waves.gb python3 test/test_emulator.py
 ```
 
 ## Guidelines

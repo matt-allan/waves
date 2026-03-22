@@ -58,6 +58,12 @@ inline void apu_enable(void)
 	NR50_REG = 0x77; // max volume L&R
 }
 
+static inline void serial_arm(void)
+{
+	SB_REG = 0xFF;
+	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+}
+
 
 inline uint8_t env_reg_val(struct envelope *env)
 {
@@ -99,7 +105,7 @@ void pu1_trigger(void)
 void pu2_set_duty_cycle(enum duty_cycle duty)
 {
 	PU2.duty_cycle = duty;
-	NR21_REG = (duty << 6) | (NR11_REG & 0x1F);
+	NR21_REG = (duty << 6) | (NR21_REG & 0x1F);
 }
 
 void pu2_set_length(uint8_t len)
@@ -283,8 +289,7 @@ void serial_isr(void)
 		break;
 	}
 
-	SB_REG = 0xFF;
-	SC_REG = 0x81; /* re-arm; use 0x80 for external MCU clock */
+	serial_arm();
 }
 
 void tim(void)
@@ -309,8 +314,7 @@ void main(void)
 	}
 	timer_enable();
 	apu_enable();
-	SB_REG = 0xFF;
-	SC_REG = 0x81; /* start first transfer; use 0x80 for external MCU clock */
+	serial_arm();
 	set_interrupts(VBL_IFLAG | TIM_IFLAG | SIO_IFLAG);
 	enable_interrupts();
 
