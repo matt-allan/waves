@@ -35,5 +35,12 @@ jobs:
       - name: Build ROM
         run: ninja
 
-      - name: Build and run tests
-        run: ninja build/lib/libsameboy.so && PYTHONPATH=src WAVES_ROM=build/waves.gb python3 test/test_emulator.py
+      - name: Build libsameboy
+        run: ninja build/lib/libsameboy.so
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run tests
+        run: |
+          uv run pytest
