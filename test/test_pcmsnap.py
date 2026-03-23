@@ -15,7 +15,6 @@ import numpy as np
 
 from pcmsnap import (
     ChannelSummary,
-    DiffResult,
     Envelope,
     Meta,
     NoiseTimbre,
@@ -31,7 +30,6 @@ from pcmsnap import (
     WavTimbre,
     WaveformDigest,
     analyze,
-    diff_snapshots,
     load_audio,
     load_wav,
     render_svg,
@@ -334,38 +332,6 @@ class TestRender(unittest.TestCase):
 
         svg = render_svg(snap, RenderConfig(palette="dmg"))
         self.assertIn("#9bbc0f", svg)  # DMG green background
-
-
-# ---------------------------------------------------------------------------
-# Diff tests
-# ---------------------------------------------------------------------------
-
-
-class TestDiff(unittest.TestCase):
-    def test_identical_snapshots(self):
-        n = int(0.3 * SR)
-        signal = _gb_pulse(440.0, n) * 0.5
-        audio = StereoAudio(left=signal, right=signal, sample_rate=SR)
-        snap = analyze(audio, SnapshotConfig(channel="PU1"))
-
-        result = diff_snapshots(snap, snap)
-        self.assertFalse(result.has_changes)
-        self.assertIn("No differences", result.format())
-
-    def test_different_snapshots(self):
-        n = int(0.3 * SR)
-        sig1 = _gb_pulse(440.0, n) * 0.5
-        sig2 = _gb_pulse(880.0, n) * 0.5
-        audio1 = StereoAudio(left=sig1, right=sig1, sample_rate=SR)
-        audio2 = StereoAudio(left=sig2, right=sig2, sample_rate=SR)
-        snap1 = analyze(audio1, SnapshotConfig(channel="PU1"))
-        snap2 = analyze(audio2, SnapshotConfig(channel="PU1"))
-
-        result = diff_snapshots(snap1, snap2)
-        self.assertTrue(result.has_changes)
-        text = result.format()
-        self.assertIn("difference", text)
-
 
 if __name__ == "__main__":
     unittest.main()

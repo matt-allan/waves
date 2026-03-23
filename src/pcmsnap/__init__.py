@@ -21,7 +21,6 @@ Usage::
 """
 
 from .analyze import analyze
-from .diff import diff_snapshots, DiffResult
 from .formats import load_audio, load_raw, load_wav, load_aiff
 from .render import render_svg, RenderConfig
 from .serialize import (
@@ -65,9 +64,6 @@ __all__ = [
     # Rendering
     "render_svg",
     "RenderConfig",
-    # Diff
-    "diff_snapshots",
-    "DiffResult",
     # Types
     "ChannelType",
     "SnapshotConfig",
