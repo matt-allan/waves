@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -77,47 +76,10 @@ class SnapshotAssertion:
         if self._update or not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, indent=2) + "\n")
-            if not self._update:
-                # First run — snapshot created, nothing to compare yet.
-                return
             return
 
         stored = json.loads(path.read_text())
         assert data == stored, (
-            f"Snapshot mismatch for {name}.\n"
-            f"Run with --update-snapshots to update.\n"
-            f"Diff:\n{_format_diff(stored, data)}"
+            f"Snapshot mismatch for {name}. "
+            f"Run with --update-snapshots to update."
         )
-
-
-def _format_diff(old: Any, new: Any, prefix: str = "") -> str:
-    """Produce a human-readable diff between two JSON-like structures."""
-    lines: list[str] = []
-    _diff(old, new, prefix, lines)
-    return "\n".join(lines) if lines else "  (no differences)"
-
-
-def _diff(old: Any, new: Any, prefix: str, lines: list[str]) -> None:
-    if isinstance(old, dict) and isinstance(new, dict):
-        for key in sorted(set(list(old.keys()) + list(new.keys()))):
-            path = f"{prefix}.{key}" if prefix else key
-            if key not in old:
-                lines.append(f"  + {path}: {_short(new[key])}")
-            elif key not in new:
-                lines.append(f"  - {path}: {_short(old[key])}")
-            else:
-                _diff(old[key], new[key], path, lines)
-    elif isinstance(old, list) and isinstance(new, list):
-        if old != new:
-            if len(old) != len(new):
-                lines.append(f"  ~ {prefix}: length {len(old)} -> {len(new)}")
-            else:
-                changed = sum(1 for a, b in zip(old, new) if a != b)
-                lines.append(f"  ~ {prefix}: {changed}/{len(old)} values changed")
-    elif old != new:
-        lines.append(f"  ~ {prefix}: {_short(old)} -> {_short(new)}")
-
-
-def _short(val: Any) -> str:
-    s = repr(val)
-    return s if len(s) < 80 else s[:77] + "..."
