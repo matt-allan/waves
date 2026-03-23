@@ -14,23 +14,29 @@ Install host build dependencies (Ubuntu/Debian):
 sudo apt install sdcc gcc clang cmake libpng-dev ninja-build
 ```
 
+Install Python dependencies:
+
+```sh
+uv sync
+```
+
 Install the toolchain (GBDK and cppp) into `tools/`:
 
 ```sh
-python3 scripts/install_tools.py
+uv run python scripts/install_tools.py
 ```
 
 Then build the ROM:
 
 ```sh
-python3 configure.py
+uv run python configure.py
 ninja
 ```
 
 Run the test suite:
 
 ```sh
-ninja build/lib/libsameboy.so && PYTHONPATH=src WAVES_ROM=build/waves.gb python3 test/test_emulator.py
+ninja build/lib/libsameboy.so && uv run pytest
 ```
 
 ## Guidelines
