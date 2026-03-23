@@ -174,7 +174,8 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
     vals = wf.values
     n = len(vals)
-    pts = [(gx + i * gw / (n - 1), cy - v * (gh // 2)) for i, v in enumerate(vals)]
+    max_abs = max(abs(v) for v in vals) or 1.0
+    pts = [(gx + i * gw / (n - 1), cy - (v / max_abs) * (gh // 2)) for i, v in enumerate(vals)]
     s += _step_polyline(pts, _FG, sw=1)
 
     return s
