@@ -1,12 +1,7 @@
 """SVG renderer for GB synth snapshots.
 
 Brutalist / lo-fi aesthetic: monochrome, blocky, no anti-aliasing,
-step-interpolated waveforms, monospace everything.  Looks like it
-came off a dot-matrix printer or a logic analyzer from 1989.
-
-Two palettes:
-  - "paper"  (default): black on off-white, like a printout
-  - "dmg":   classic Game Boy dot-matrix green
+step-interpolated waveforms, monospace everything.
 """
 
 from __future__ import annotations
@@ -21,6 +16,13 @@ from ._types import (
     WavTimbre,
 )
 
+_FG = "#1a1a1a"
+_MID = "#888880"
+_FAINT = "#ccc8be"
+_BG = "#f4f1eb"
+_TRACE2 = "#666660"
+_PANEL = "#eae7e0"
+
 
 @dataclass
 class RenderConfig:
@@ -32,44 +34,14 @@ class RenderConfig:
     timbre_h: int = 80
     panning_h: int = 36
     footer_h: int = 28
-    palette: str = "paper"  # "paper" or "dmg"
 
 
-# Palettes
-_PALETTES = {
-    "paper": {
-        "bg": "#f4f1eb",
-        "fg": "#1a1a1a",
-        "mid": "#888880",
-        "faint": "#ccc8be",
-        "trace": "#1a1a1a",
-        "trace2": "#666660",
-        "accent": "#1a1a1a",
-        "panel": "#eae7e0",
-    },
-    "dmg": {
-        "bg": "#9bbc0f",
-        "fg": "#0f380f",
-        "mid": "#306230",
-        "faint": "#8bac0f",
-        "trace": "#0f380f",
-        "trace2": "#306230",
-        "accent": "#0f380f",
-        "panel": "#8bac0f",
-    },
-}
-
-
-def _pal(cfg: RenderConfig) -> dict[str, str]:
-    return _PALETTES.get(cfg.palette, _PALETTES["paper"])
-
-
-def _svg_open(w: int, h: int, bg: str) -> str:
+def _svg_open(w: int, h: int) -> str:
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{w}" height="{h}" viewBox="0 0 {w} {h}" '
         f'shape-rendering="crispEdges">\n'
-        f'<rect width="{w}" height="{h}" fill="{bg}"/>\n'
+        f'<rect width="{w}" height="{h}" fill="{_BG}"/>\n'
     )
 
 
@@ -106,8 +78,7 @@ def _vline(x: float, y: float, h: float, color: str) -> str:
 
 
 def _step_polyline(points: list[tuple[float, float]], color: str, sw: int = 1) -> str:
-    """Step-interpolated polyline (no smooth lines — each sample holds
-    its value until the next one, like a real DAC output)."""
+    """Step-interpolated polyline — each sample holds its value until the next."""
     if len(points) < 2:
         return ""
     segs: list[str] = []
@@ -158,26 +129,16 @@ def _block_bars(
 
 
 def _render_header(snap: Snapshot, _y0: int, cfg: RenderConfig) -> str:
-    p = _pal(cfg)
     m = snap.meta
-    ch = _channel_name(snap)
+    ch = snap.timbre.channel
 
     s = ""
-    s += _hline(cfg.pad, 4, cfg.width - 2 * cfg.pad, p["fg"])
+    s += _hline(cfg.pad, 4, cfg.width - 2 * cfg.pad, _FG)
 
     title = f"[{ch}]  {m.sample_rate}Hz  {m.duration_ms:.0f}ms  {m.n_samples}smp"
-    s += _txt(cfg.pad, 24, title, p["fg"], size=12, weight="700")
+    s += _txt(cfg.pad, 24, title, _FG, size=12, weight="700")
 
-    s += _txt(
-        cfg.width - cfg.pad,
-        24,
-        f"v{m.version}",
-        p["mid"],
-        size=9,
-        anchor="end",
-    )
-
-    s += _hline(cfg.pad, 32, cfg.width - 2 * cfg.pad, p["fg"])
+    s += _hline(cfg.pad, 32, cfg.width - 2 * cfg.pad, _FG)
     return s
 
 
@@ -186,17 +147,16 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     if not wf:
         return ""
 
-    p = _pal(cfg)
     pw = cfg.width - 2 * cfg.pad
     h = cfg.waveform_h
 
     s = ""
-    s += _txt(cfg.pad, y0 + 11, "WAVEFORM", p["mid"], size=9)
+    s += _txt(cfg.pad, y0 + 11, "WAVEFORM", _MID, size=9)
     s += _txt(
         cfg.width - cfg.pad,
         y0 + 11,
         f"{wf.fundamental_hz:.1f}Hz  {wf.num_cycles}cyc",
-        p["mid"],
+        _MID,
         size=9,
         anchor="end",
     )
@@ -206,16 +166,16 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
     s += (
         f'<rect x="{gx}" y="{gy}" width="{gw}" height="{gh}" '
-        f'fill="none" stroke="{p["faint"]}"/>\n'
+        f'fill="none" stroke="{_FAINT}"/>\n'
     )
 
     cy = gy + gh // 2
-    s += _hline(gx, cy, gw, p["faint"], dashed=True)
+    s += _hline(gx, cy, gw, _FAINT, dashed=True)
 
     vals = wf.values
     n = len(vals)
     pts = [(gx + i * gw / (n - 1), cy - v * (gh // 2)) for i, v in enumerate(vals)]
-    s += _step_polyline(pts, p["trace"], sw=1)
+    s += _step_polyline(pts, _FG, sw=1)
 
     return s
 
@@ -223,17 +183,16 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 def _render_envelope(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     env = snap.envelope
 
-    p = _pal(cfg)
     pw = cfg.width - 2 * cfg.pad
     h = cfg.envelope_h
 
     s = ""
-    s += _txt(cfg.pad, y0 + 11, "ENVELOPE", p["mid"], size=9)
+    s += _txt(cfg.pad, y0 + 11, "ENVELOPE", _MID, size=9)
     s += _txt(
         cfg.width - cfg.pad,
         y0 + 11,
         f"{env.window_ms:.0f}ms win  {env.n_windows}pts",
-        p["mid"],
+        _MID,
         size=9,
         anchor="end",
     )
@@ -243,7 +202,7 @@ def _render_envelope(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
     s += (
         f'<rect x="{gx}" y="{gy}" width="{gw}" height="{gh}" '
-        f'fill="none" stroke="{p["faint"]}"/>\n'
+        f'fill="none" stroke="{_FAINT}"/>\n'
     )
 
     left, right = env.left, env.right
@@ -253,47 +212,46 @@ def _render_envelope(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
     mx = max(max(left, default=0), max(right, default=0)) or 1.0
 
-    s += _block_bars(gx, gy, gw, gh, left, mx, p["trace"])
+    s += _block_bars(gx, gy, gw, gh, left, mx, _FG)
 
     if right != left:
-        s += _block_bars(gx, gy, gw, gh, right, mx, p["trace2"])
+        s += _block_bars(gx, gy, gw, gh, right, mx, _TRACE2)
 
     dur = snap.meta.duration_ms
-    s += _hline(gx, gy + gh, gw, p["faint"])
+    s += _hline(gx, gy + gh, gw, _FAINT)
     for frac in [0, 0.25, 0.5, 0.75, 1.0]:
         tx = gx + frac * gw
-        s += _vline(tx, gy + gh, 3, p["mid"])
+        s += _vline(tx, gy + gh, 3, _MID)
         s += _txt(
-            tx, gy + gh + 13, f"{frac * dur:.0f}", p["mid"], size=8, anchor="middle"
+            tx, gy + gh + 13, f"{frac * dur:.0f}", _MID, size=8, anchor="middle"
         )
 
-    s += _txt(gx + 2, gy + 10, f"{mx:.3f}", p["mid"], size=8)
+    s += _txt(gx + 2, gy + 10, f"{mx:.3f}", _MID, size=8)
 
     if right != left:
         lx = gx + gw - 40
-        s += _txt(lx, gy + 10, "L", p["trace"], size=8, weight="700")
-        s += _txt(lx + 14, gy + 10, "R", p["trace2"], size=8, weight="700")
+        s += _txt(lx, gy + 10, "L", _FG, size=8, weight="700")
+        s += _txt(lx + 14, gy + 10, "R", _TRACE2, size=8, weight="700")
 
     return s
 
 
 def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     timbre = snap.timbre
-    ch = _channel_name(snap)
-    p = _pal(cfg)
+    ch = snap.timbre.channel
     pw = cfg.width - 2 * cfg.pad
 
     s = ""
-    s += _hline(cfg.pad, y0, pw, p["faint"])
-    s += _txt(cfg.pad, y0 + 13, "TIMBRE", p["mid"], size=9)
+    s += _hline(cfg.pad, y0, pw, _FAINT)
+    s += _txt(cfg.pad, y0 + 13, "TIMBRE", _MID, size=9)
 
     tag_x = cfg.pad + 56
     tw = len(ch) * 7.5 + 8
     s += (
         f'<rect x="{tag_x}" y="{y0 + 3}" width="{tw:.0f}" height="14" '
-        f'fill="{p["fg"]}" stroke="none"/>\n'
+        f'fill="{_FG}" stroke="none"/>\n'
     )
-    s += _txt(tag_x + 4, y0 + 13, ch, p["bg"], size=9, weight="700")
+    s += _txt(tag_x + 4, y0 + 13, ch, _BG, size=9, weight="700")
 
     tx = cfg.pad + 12
     ty = y0 + 30
@@ -302,9 +260,9 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
         duty = timbre.duty_cycle or "??"
         freq = timbre.fundamental_hz
 
-        s += _txt(tx, ty, f"DUTY  {duty}", p["fg"], size=11, weight="700")
+        s += _txt(tx, ty, f"DUTY  {duty}", _FG, size=11, weight="700")
         if freq:
-            s += _txt(tx, ty + 16, f"FREQ  {freq:.1f} Hz", p["fg"], size=11)
+            s += _txt(tx, ty + 16, f"FREQ  {freq:.1f} Hz", _FG, size=11)
 
         duty_map = {"12.5%": 0.125, "25%": 0.25, "50%": 0.5, "75%": 0.75}
         d = duty_map.get(duty, 0.5)
@@ -333,13 +291,13 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
             p_str = " ".join(f"{x:.0f},{y:.0f}" for x, y in pts)
             s += (
                 f'<polyline points="{p_str}" fill="none" '
-                f'stroke="{p["fg"]}" stroke-width="2"/>\n'
+                f'stroke="{_FG}" stroke-width="2"/>\n'
             )
 
     elif isinstance(timbre, WavTimbre):
         freq = timbre.fundamental_hz
         if freq:
-            s += _txt(tx, ty, f"FREQ  {freq:.1f} Hz", p["fg"], size=11, weight="700")
+            s += _txt(tx, ty, f"FREQ  {freq:.1f} Hz", _FG, size=11, weight="700")
 
         spectrum = timbre.spectrum
         if spectrum:
@@ -359,14 +317,14 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
                 by = y0 + 16 + sh - bh
                 s += (
                     f'<rect x="{bx:.0f}" y="{by:.0f}" '
-                    f'width="{bar_w}" height="{bh:.0f}" fill="{p["fg"]}"/>\n'
+                    f'width="{bar_w}" height="{bh:.0f}" fill="{_FG}"/>\n'
                 )
 
     elif isinstance(timbre, NoiseTimbre):
         mode = timbre.lfsr_mode or "??"
-        s += _txt(tx, ty, f"LFSR  {mode}", p["fg"], size=11, weight="700")
+        s += _txt(tx, ty, f"LFSR  {mode}", _FG, size=11, weight="700")
         desc = "(tonal / periodic)" if mode == "7-bit" else "(white noise)"
-        s += _txt(tx, ty + 16, desc, p["mid"], size=10)
+        s += _txt(tx, ty + 16, desc, _MID, size=10)
 
         nx = cfg.width // 2
         ny = y0 + 18
@@ -381,7 +339,7 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
             by = ny + nh - bh
             s += (
                 f'<rect x="{bx}" y="{by:.0f}" width="{bar_w - 1}" '
-                f'height="{bh:.0f}" fill="{p["fg"]}"/>\n'
+                f'height="{bh:.0f}" fill="{_FG}"/>\n'
             )
 
     return s
@@ -389,14 +347,13 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
 def _render_panning(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     pan = snap.panning
-    p = _pal(cfg)
     pw = cfg.width - 2 * cfg.pad
 
     s = ""
-    s += _hline(cfg.pad, y0, pw, p["faint"])
-    s += _txt(cfg.pad, y0 + 12, "PAN", p["mid"], size=9)
+    s += _hline(cfg.pad, y0, pw, _FAINT)
+    s += _txt(cfg.pad, y0 + 12, "PAN", _MID, size=9)
 
-    states = pan.expand()
+    states = pan.states
     n = len(states)
     if n == 0:
         return s
@@ -412,30 +369,20 @@ def _render_panning(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
         bx = gx + i * bw
         w = max(1, bw - 0.5)
         if st == "C":
-            s += f'<rect x="{bx:.1f}" y="{by}" width="{w:.1f}" height="{bh}" fill="{p["fg"]}"/>\n'
+            s += f'<rect x="{bx:.1f}" y="{by}" width="{w:.1f}" height="{bh}" fill="{_FG}"/>\n'
         elif st == "L":
-            s += f'<rect x="{bx:.1f}" y="{by}" width="{w:.1f}" height="{bh // 2}" fill="{p["fg"]}"/>\n'
+            s += f'<rect x="{bx:.1f}" y="{by}" width="{w:.1f}" height="{bh // 2}" fill="{_FG}"/>\n'
         elif st == "R":
-            s += f'<rect x="{bx:.1f}" y="{by + bh // 2}" width="{w:.1f}" height="{bh // 2}" fill="{p["fg"]}"/>\n'
-
-    s += _txt(
-        cfg.width - cfg.pad,
-        y0 + 26,
-        pan.states_str,
-        p["mid"],
-        size=8,
-        anchor="end",
-    )
+            s += f'<rect x="{bx:.1f}" y="{by + bh // 2}" width="{w:.1f}" height="{bh // 2}" fill="{_FG}"/>\n'
 
     return s
 
 
 def _render_footer(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
-    p = _pal(cfg)
     pw = cfg.width - 2 * cfg.pad
 
     s = ""
-    s += _hline(cfg.pad, y0, pw, p["fg"])
+    s += _hline(cfg.pad, y0, pw, _FG)
 
     sm = snap.summary
     parts = []
@@ -446,17 +393,8 @@ def _render_footer(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
             f"DC{lbl}={ch_data.dc_offset:+.3f}"
         )
 
-    s += _txt(cfg.pad, y0 + 16, "  ".join(parts), p["fg"], size=9)
+    s += _txt(cfg.pad, y0 + 16, "  ".join(parts), _FG, size=9)
     return s
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _channel_name(snap: Snapshot) -> str:
-    return snap.timbre.channel
 
 
 # ---------------------------------------------------------------------------
@@ -487,8 +425,7 @@ def render_svg(snapshot: Snapshot, config: Optional[RenderConfig] = None) -> str
     sections.append(("footer", y))
     y += config.footer_h
 
-    p = _pal(config)
-    svg = _svg_open(config.width, y, p["bg"])
+    svg = _svg_open(config.width, y)
 
     renderers = {
         "header": _render_header,

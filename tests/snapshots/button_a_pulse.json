@@ -1,7 +1,5 @@
 {
   "meta": {
-    "version": 2,
-    "format": "gb-synth-snapshot",
     "sample_rate": 44100,
     "channels": 2,
     "duration_ms": 185.7,
@@ -108,12 +106,44 @@
   },
   "panning": {
     "window_ms": 5.0,
-    "n_windows": 37,
-    "runs": [
-      {
-        "state": "C",
-        "count": 37
-      }
+    "states": [
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C"
     ]
   },
   "waveform": {

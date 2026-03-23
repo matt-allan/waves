@@ -21,7 +21,7 @@ Usage::
 """
 
 from .analyze import analyze
-from .formats import audio_from_bytes, load_audio, load_raw, load_wav, load_aiff
+from .formats import audio_from_bytes
 from .render import render_svg, RenderConfig
 from .serialize import (
     snapshot_to_json,
@@ -37,7 +37,6 @@ from ._types import (
     ChannelSummary,
     Summary,
     Envelope,
-    PanningRun,
     Panning,
     SpectralPeak,
     PulseTimbre,
@@ -53,10 +52,6 @@ __all__ = [
     "analyze",
     # Formats
     "audio_from_bytes",
-    "load_audio",
-    "load_raw",
-    "load_wav",
-    "load_aiff",
     # Serialization
     "snapshot_to_json",
     "snapshot_from_json",
@@ -73,7 +68,6 @@ __all__ = [
     "ChannelSummary",
     "Summary",
     "Envelope",
-    "PanningRun",
     "Panning",
     "SpectralPeak",
     "PulseTimbre",

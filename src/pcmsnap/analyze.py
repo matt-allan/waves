@@ -146,7 +146,7 @@ def compute_panning(
         else:
             states.append("-")
 
-    return Panning.from_states(cfg.panning_window_ms, states)
+    return Panning(window_ms=cfg.panning_window_ms, states=states)
 
 
 # ---------------------------------------------------------------------------
@@ -420,8 +420,6 @@ def analyze(audio: StereoAudio, config: Optional[SnapshotConfig] = None) -> Snap
     duration_ms = round(len(left) / sample_rate * 1000, _TIME_PREC)
 
     meta = Meta(
-        version=2,
-        format="gb-synth-snapshot",
         sample_rate=sample_rate,
         channels=2,
         duration_ms=duration_ms,
