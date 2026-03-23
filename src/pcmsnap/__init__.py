@@ -21,7 +21,7 @@ Usage::
 """
 
 from .analyze import analyze
-from .formats import load_audio, load_raw, load_wav, load_aiff
+from .formats import audio_from_bytes, load_audio, load_raw, load_wav, load_aiff
 from .render import render_svg, RenderConfig
 from .serialize import (
     snapshot_to_json,
@@ -52,6 +52,7 @@ __all__ = [
     # Analysis
     "analyze",
     # Formats
+    "audio_from_bytes",
     "load_audio",
     "load_raw",
     "load_wav",
