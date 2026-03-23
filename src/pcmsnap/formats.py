@@ -20,6 +20,7 @@ from ._types import StereoAudio
 
 try:
     import aifc
+
     _HAS_AIFC = True
 except ImportError:
     _HAS_AIFC = False
@@ -44,9 +45,7 @@ def load_raw(
 
     fmt = "<" if byte_order == "little" else ">"
     n_samples = len(raw) // 2
-    samples = np.array(
-        struct.unpack(f"{fmt}{n_samples}h", raw), dtype=np.float64
-    )
+    samples = np.array(struct.unpack(f"{fmt}{n_samples}h", raw), dtype=np.float64)
     samples /= 32768.0
 
     if channels == 2:
@@ -104,10 +103,7 @@ def load_aiff(path: str) -> StereoAudio:
         raw = a.readframes(n_frames)
 
     if sampwidth == 2:
-        samples = (
-            np.frombuffer(raw, dtype=np.dtype(">i2")).astype(np.float64)
-            / 32768.0
-        )
+        samples = np.frombuffer(raw, dtype=np.dtype(">i2")).astype(np.float64) / 32768.0
     elif sampwidth == 1:
         samples = (
             np.frombuffer(raw, dtype=np.uint8).astype(np.float64) - 128.0

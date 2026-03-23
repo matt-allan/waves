@@ -74,8 +74,13 @@ def _svg_open(w: int, h: int, bg: str) -> str:
 
 
 def _txt(
-    x: float, y: float, text: str, color: str,
-    size: int = 10, anchor: str = "start", weight: str = "400",
+    x: float,
+    y: float,
+    text: str,
+    color: str,
+    size: int = 10,
+    anchor: str = "start",
+    weight: str = "400",
 ) -> str:
     return (
         f'<text x="{x}" y="{y}" fill="{color}" font-size="{size}" '
@@ -114,14 +119,19 @@ def _step_polyline(points: list[tuple[float, float]], color: str, sw: int = 1) -
     segs.append(f"{points[-1][0]:.0f},{points[-1][1]:.0f}")
     pts = " ".join(segs)
     return (
-        f'<polyline points="{pts}" fill="none" stroke="{color}" '
-        f'stroke-width="{sw}"/>\n'
+        f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="{sw}"/>\n'
     )
 
 
 def _block_bars(
-    x: float, y: float, w: float, h: float,
-    values: list[float], max_val: float, color: str, bar_gap: float = 0,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    values: list[float],
+    max_val: float,
+    color: str,
+    bar_gap: float = 0,
 ) -> str:
     """Chunky block bars — no rounded corners, no anti-aliasing."""
     if not values or max_val <= 0:
@@ -159,8 +169,12 @@ def _render_header(snap: Snapshot, _y0: int, cfg: RenderConfig) -> str:
     s += _txt(cfg.pad, 24, title, p["fg"], size=12, weight="700")
 
     s += _txt(
-        cfg.width - cfg.pad, 24, f"v{m.version}", p["mid"],
-        size=9, anchor="end",
+        cfg.width - cfg.pad,
+        24,
+        f"v{m.version}",
+        p["mid"],
+        size=9,
+        anchor="end",
     )
 
     s += _hline(cfg.pad, 32, cfg.width - 2 * cfg.pad, p["fg"])
@@ -179,9 +193,12 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     s = ""
     s += _txt(cfg.pad, y0 + 11, "WAVEFORM", p["mid"], size=9)
     s += _txt(
-        cfg.width - cfg.pad, y0 + 11,
+        cfg.width - cfg.pad,
+        y0 + 11,
         f"{wf.fundamental_hz:.1f}Hz  {wf.num_cycles}cyc",
-        p["mid"], size=9, anchor="end",
+        p["mid"],
+        size=9,
+        anchor="end",
     )
 
     gx, gy = cfg.pad, y0 + 16
@@ -197,10 +214,7 @@ def _render_waveform(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
 
     vals = wf.values
     n = len(vals)
-    pts = [
-        (gx + i * gw / (n - 1), cy - v * (gh // 2))
-        for i, v in enumerate(vals)
-    ]
+    pts = [(gx + i * gw / (n - 1), cy - v * (gh // 2)) for i, v in enumerate(vals)]
     s += _step_polyline(pts, p["trace"], sw=1)
 
     return s
@@ -216,9 +230,12 @@ def _render_envelope(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     s = ""
     s += _txt(cfg.pad, y0 + 11, "ENVELOPE", p["mid"], size=9)
     s += _txt(
-        cfg.width - cfg.pad, y0 + 11,
+        cfg.width - cfg.pad,
+        y0 + 11,
         f"{env.window_ms:.0f}ms win  {env.n_windows}pts",
-        p["mid"], size=9, anchor="end",
+        p["mid"],
+        size=9,
+        anchor="end",
     )
 
     gx, gy = cfg.pad, y0 + 16
@@ -246,7 +263,9 @@ def _render_envelope(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
     for frac in [0, 0.25, 0.5, 0.75, 1.0]:
         tx = gx + frac * gw
         s += _vline(tx, gy + gh, 3, p["mid"])
-        s += _txt(tx, gy + gh + 13, f"{frac * dur:.0f}", p["mid"], size=8, anchor="middle")
+        s += _txt(
+            tx, gy + gh + 13, f"{frac * dur:.0f}", p["mid"], size=8, anchor="middle"
+        )
 
     s += _txt(gx + 2, gy + 10, f"{mx:.3f}", p["mid"], size=8)
 
@@ -300,13 +319,15 @@ def _render_timbre(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
             cw = dw // 2
             hi_w = int(d * cw)
             lo_w = cw - hi_w
-            pts.extend([
-                (cx, dy + dh),
-                (cx, dy),
-                (cx + hi_w, dy),
-                (cx + hi_w, dy + dh),
-                (cx + hi_w + lo_w, dy + dh),
-            ])
+            pts.extend(
+                [
+                    (cx, dy + dh),
+                    (cx, dy),
+                    (cx + hi_w, dy),
+                    (cx + hi_w, dy + dh),
+                    (cx + hi_w + lo_w, dy + dh),
+                ]
+            )
 
         if pts:
             p_str = " ".join(f"{x:.0f},{y:.0f}" for x, y in pts)
@@ -398,8 +419,12 @@ def _render_panning(snap: Snapshot, y0: int, cfg: RenderConfig) -> str:
             s += f'<rect x="{bx:.1f}" y="{by + bh // 2}" width="{w:.1f}" height="{bh // 2}" fill="{p["fg"]}"/>\n'
 
     s += _txt(
-        cfg.width - cfg.pad, y0 + 26, pan.states_str,
-        p["mid"], size=8, anchor="end",
+        cfg.width - cfg.pad,
+        y0 + 26,
+        pan.states_str,
+        p["mid"],
+        size=8,
+        anchor="end",
     )
 
     return s

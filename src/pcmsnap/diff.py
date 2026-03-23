@@ -79,9 +79,8 @@ def _diff_values(old: Any, new: Any, prefix: str, changes: list[Change]) -> None
     elif isinstance(old, list) and isinstance(new, list):
         if old != new:
             path = prefix
-            if (
-                all(isinstance(x, (int, float)) for x in old)
-                and all(isinstance(x, (int, float)) for x in new)
+            if all(isinstance(x, (int, float)) for x in old) and all(
+                isinstance(x, (int, float)) for x in new
             ):
                 if len(old) == len(new):
                     diffs = [abs(a - b) for a, b in zip(old, new)]

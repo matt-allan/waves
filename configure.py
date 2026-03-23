@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 Matt Allan.  Licensed under the MIT license.
-
 """Generate the build.ninja file for waves."""
 
 import argparse

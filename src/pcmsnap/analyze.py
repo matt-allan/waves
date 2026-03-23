@@ -180,11 +180,7 @@ def _detect_fundamental(
 
     peaks: list[tuple[int, float]] = []
     for i in range(1, len(search) - 1):
-        if (
-            search[i] > search[i - 1]
-            and search[i] > search[i + 1]
-            and search[i] > 0.3
-        ):
+        if search[i] > search[i - 1] and search[i] > search[i + 1] and search[i] > 0.3:
             peaks.append((i + min_lag, float(search[i])))
 
     if not peaks:
@@ -241,9 +237,7 @@ def _detect_duty_cycle(
     return None
 
 
-def _detect_noise_mode(
-    signal: np.ndarray, sample_rate: int
-) -> Optional[str]:
+def _detect_noise_mode(signal: np.ndarray, sample_rate: int) -> Optional[str]:
     """Detect 7-bit (tonal) vs 15-bit (white) LFSR mode.
 
     7-bit produces a short repeating pattern with strong spectral peaks.

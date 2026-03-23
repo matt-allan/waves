@@ -18,6 +18,7 @@ PanState = Literal["C", "L", "R", "-"]
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SnapshotConfig:
     """Configuration for GB snapshot analysis."""
@@ -48,6 +49,7 @@ class SnapshotConfig:
 # Audio data
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StereoAudio:
     """Stereo audio data normalized to [-1.0, 1.0]."""
@@ -60,6 +62,7 @@ class StereoAudio:
 # ---------------------------------------------------------------------------
 # Snapshot sections
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Meta:
@@ -211,6 +214,7 @@ class WaveformDigest:
 # ---------------------------------------------------------------------------
 # Top-level snapshot
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Snapshot:

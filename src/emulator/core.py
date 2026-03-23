@@ -175,15 +175,17 @@ class Emulator:
 
     # -- Joypad input -----------------------------------------------------
 
-    def press(self, button):
+    def press(self, button: Button) -> None:
         """Press a joypad button (stays held until :meth:`release`)."""
         self._lib.GB_set_key_state(self._gb, int(button), True)
 
-    def release(self, button):
+    def release(self, button: Button) -> None:
         """Release a joypad button."""
         self._lib.GB_set_key_state(self._gb, int(button), False)
 
-    def tap(self, button, hold_frames=2, release_frames=2):
+    def tap(
+        self, button: Button, hold_frames: int = 2, release_frames: int = 2
+    ) -> None:
         """Press and release *button*, advancing frames in between."""
         self.press(button)
         self.run_frames(hold_frames)
@@ -192,7 +194,7 @@ class Emulator:
 
     # -- Serial link ------------------------------------------------------
 
-    def serial_send(self, data):
+    def serial_send(self, data: bytes) -> None:
         """Enqueue *data* bytes to send to the GB via the serial link."""
         for b in data:
             self._serial.enqueue(b if isinstance(b, int) else ord(b))
@@ -242,7 +244,7 @@ class Emulator:
         except ImportError:
             self._save_ppm(path)
 
-    def _save_ppm(self, path):
+    def _save_ppm(self, path: str) -> None:
         with open(path, "w") as f:
             f.write(f"P3\n{SCREEN_W} {SCREEN_H}\n255\n")
             for i in range(SCREEN_W * SCREEN_H):
@@ -262,7 +264,7 @@ class Emulator:
         """Drain all buffered audio as packed int16 LE bytes."""
         return self._audio.drain_bytes()
 
-    def save_audio(self, path):
+    def save_audio(self, path: str) -> None:
         """Drain the audio buffer and write a WAV file to *path*."""
         data = self.drain_audio_bytes()
         AudioBuffer.save_wav(path, data)
