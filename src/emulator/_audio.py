@@ -47,7 +47,9 @@ class AudioBuffer:
     def drain_bytes(self, max_samples=0):
         """Drain and return packed little-endian int16 bytes (L, R interleaved)."""
         samples = self.drain(max_samples)
-        return struct.pack(f"<{len(samples) * 2}h", *[v for pair in samples for v in pair])
+        return struct.pack(
+            f"<{len(samples) * 2}h", *[v for pair in samples for v in pair]
+        )
 
     @staticmethod
     def save_wav(path, data, sample_rate=SAMPLE_RATE):

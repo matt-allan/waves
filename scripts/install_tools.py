@@ -116,8 +116,7 @@ def main():
     print()
     install_cppp()
 
-    print("\nDone. Set GBDK_HOME to use the downloaded GBDK:")
-    print(f"  make GBDK_HOME={os.path.relpath(os.path.join(TOOLS_DIR, 'gbdk'), REPO_ROOT)}/")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
