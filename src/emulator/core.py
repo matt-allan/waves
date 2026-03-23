@@ -89,17 +89,11 @@ class Emulator:
         self._cb_vblank = bind.VBLANK_FUNC(self._on_vblank)
         self._cb_log = bind.LOG_FUNC(self._on_log)
         self._cb_audio = bind.AUDIO_SAMPLE_FUNC(self._on_audio_sample)
-        self._cb_serial_start = bind.SERIAL_BIT_START_FUNC(
-            self._on_serial_bit_start
-        )
-        self._cb_serial_end = bind.SERIAL_BIT_END_FUNC(
-            self._on_serial_bit_end
-        )
+        self._cb_serial_start = bind.SERIAL_BIT_START_FUNC(self._on_serial_bit_start)
+        self._cb_serial_end = bind.SERIAL_BIT_END_FUNC(self._on_serial_bit_end)
 
         # Initialise SameBoy.
-        self._gb = self._lib.GB_init(
-            self._lib.GB_alloc(), bind.GB_MODEL_DMG_B
-        )
+        self._gb = self._lib.GB_init(self._lib.GB_alloc(), bind.GB_MODEL_DMG_B)
         if not self._gb:
             raise RuntimeError("GB_init failed")
 
@@ -113,22 +107,13 @@ class Emulator:
         self._lib.GB_set_serial_transfer_bit_start_callback(
             self._gb, self._cb_serial_start
         )
-        self._lib.GB_set_serial_transfer_bit_end_callback(
-            self._gb, self._cb_serial_end
-        )
+        self._lib.GB_set_serial_transfer_bit_end_callback(self._gb, self._cb_serial_end)
 
         # Boot ROM.
         if boot_rom_path:
-            if (
-                self._lib.GB_load_boot_rom(
-                    self._gb, boot_rom_path.encode()
-                )
-                != 0
-            ):
+            if self._lib.GB_load_boot_rom(self._gb, boot_rom_path.encode()) != 0:
                 self._cleanup()
-                raise FileNotFoundError(
-                    f"Failed to load boot ROM: {boot_rom_path}"
-                )
+                raise FileNotFoundError(f"Failed to load boot ROM: {boot_rom_path}")
         else:
             stub = (ctypes.c_uint8 * 256)(*_BOOT_ROM_STUB)
             self._lib.GB_load_boot_rom_from_buffer(self._gb, stub, 256)
@@ -226,26 +211,22 @@ class Emulator:
 
     def screenshot(self):
         """Return raw RGBA pixel data as ``bytes`` (160 * 144 * 4)."""
-        raw = ctypes.string_at(
-            ctypes.addressof(self._pixels), SCREEN_W * SCREEN_H * 4
-        )
+        raw = ctypes.string_at(ctypes.addressof(self._pixels), SCREEN_W * SCREEN_H * 4)
         # The pixel format is 0xFFRRGGBB which, on little-endian, is
         # stored as BB GG RR FF in memory.  Convert to R G B A.
         out = bytearray(len(raw))
         for i in range(SCREEN_W * SCREEN_H):
             off = i * 4
-            out[off] = raw[off + 2]      # R
+            out[off] = raw[off + 2]  # R
             out[off + 1] = raw[off + 1]  # G
-            out[off + 2] = raw[off]      # B
+            out[off + 2] = raw[off]  # B
             out[off + 3] = raw[off + 3]  # A
         return bytes(out)
 
     def screenshot_raw(self):
         """Return the native pixel buffer as ``bytes`` (0xFFRRGGBB format)."""
         return bytes(
-            ctypes.string_at(
-                ctypes.addressof(self._pixels), SCREEN_W * SCREEN_H * 4
-            )
+            ctypes.string_at(ctypes.addressof(self._pixels), SCREEN_W * SCREEN_H * 4)
         )
 
     def screenshot_pil(self):

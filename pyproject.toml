@@ -1,0 +1,18 @@
+[project]
+name = "waves"
+version = "0.1.0"
+description = "Waves dev tooling"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.38.3",
+    "ruff>=0.15.7",
+]
+
+[tool.basedpyright]
+reportAny = false
+reportUnannotatedClassAttribute = false
+reportUnusedCallResult = false

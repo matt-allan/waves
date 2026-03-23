@@ -88,7 +88,7 @@ _DEFAULT_LIB_PATH = (
 )
 
 
-def load(lib_path=None):
+def load(lib_path: str | None = None):
     """Load libsameboy and set all argtypes/restypes.
 
     *lib_path* is the path to ``libsameboy.so`` (or ``.dylib``).  When
@@ -101,10 +101,7 @@ def load(lib_path=None):
                 lib_path = str(p)
                 break
         if lib_path is None:
-            raise FileNotFoundError(
-                f"libsameboy not found in {_DEFAULT_LIB_PATH}; "
-                "run 'ninja build/lib/libsameboy.so' first"
-            )
+            raise FileNotFoundError(f"libsameboy not found in {_DEFAULT_LIB_PATH}")
 
     lib = ctypes.CDLL(str(lib_path))
 
