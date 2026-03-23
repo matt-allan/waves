@@ -12,7 +12,6 @@ from ._types import (
     Meta,
     NoiseTimbre,
     Panning,
-    PanningRun,
     PulseTimbre,
     Snapshot,
     SpectralPeak,
@@ -50,11 +49,7 @@ def snapshot_from_dict(d: dict[str, Any]) -> Snapshot:
         ),
         envelope=Envelope(**e),
         timbre=_parse_timbre(d["timbre"]),
-        panning=Panning(
-            window_ms=p["window_ms"],
-            n_windows=p["n_windows"],
-            runs=[PanningRun(**r) for r in p["runs"]],
-        ),
+        panning=Panning(**p),
         waveform=WaveformDigest(**w) if w is not None else None,
     )
 

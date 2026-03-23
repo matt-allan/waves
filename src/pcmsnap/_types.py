@@ -1,8 +1,4 @@
-"""Core types for pcmsnap snapshot data.
-
-All snapshot data is represented as typed dataclasses rather than plain dicts,
-giving proper IDE support, validation, and self-documenting structure.
-"""
+"""Core types for pcmsnap snapshot data."""
 
 from __future__ import annotations
 
@@ -68,8 +64,6 @@ class StereoAudio:
 class Meta:
     """Snapshot metadata."""
 
-    version: int
-    format: str
     sample_rate: int
     channels: int
     duration_ms: float
@@ -104,63 +98,11 @@ class Envelope:
 
 
 @dataclass
-class PanningRun:
-    """A run-length encoded panning segment."""
-
-    state: PanState
-    count: int
-
-    def __str__(self) -> str:
-        if self.count > 1:
-            return f"{self.state}x{self.count}"
-        return self.state
-
-
-@dataclass
 class Panning:
-    """Binary panning state per window."""
+    """Per-window panning state."""
 
     window_ms: float
-    n_windows: int
-    runs: list[PanningRun]
-
-    @property
-    def states_str(self) -> str:
-        return " ".join(str(r) for r in self.runs)
-
-    def expand(self) -> list[PanState]:
-        """Expand runs into a flat list of per-window states."""
-        out: list[PanState] = []
-        for r in self.runs:
-            out.extend([r.state] * r.count)
-        return out
-
-    @staticmethod
-    def from_states(window_ms: float, states: list[PanState]) -> "Panning":
-        """Create from a flat list of per-window states (RLE-compressed)."""
-        runs: list[PanningRun] = []
-        if states:
-            cur, count = states[0], 1
-            for st in states[1:]:
-                if st == cur:
-                    count += 1
-                else:
-                    runs.append(PanningRun(state=cur, count=count))
-                    cur, count = st, 1
-            runs.append(PanningRun(state=cur, count=count))
-        return Panning(window_ms=window_ms, n_windows=len(states), runs=runs)
-
-    @staticmethod
-    def parse_states_str(s: str) -> list[PanningRun]:
-        """Parse an RLE string like 'Cx50 -x20 L' into runs."""
-        runs: list[PanningRun] = []
-        for tok in s.split():
-            if "x" in tok:
-                state, cnt = tok.split("x", 1)
-                runs.append(PanningRun(state=state, count=int(cnt)))  # type: ignore[arg-type]
-            else:
-                runs.append(PanningRun(state=tok, count=1))  # type: ignore[arg-type]
-        return runs
+    states: list[PanState]
 
 
 @dataclass
