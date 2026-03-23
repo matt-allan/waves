@@ -26,6 +26,34 @@ except ImportError:
     _HAS_AIFC = False
 
 
+def audio_from_bytes(
+    data: bytes,
+    sample_rate: int = 44100,
+    channels: int = 2,
+    byte_order: Literal["little", "big"] = "little",
+) -> StereoAudio:
+    """Create ``StereoAudio`` from raw signed 16-bit PCM bytes.
+
+    *data* is interleaved int16 samples (L, R, L, R, ...) in the given
+    *byte_order*.  For mono input, right is a copy of left.
+    """
+    fmt = "<" if byte_order == "little" else ">"
+    n_samples = len(data) // 2
+    samples = np.array(
+        struct.unpack(f"{fmt}{n_samples}h", data), dtype=np.float64
+    )
+    samples /= 32768.0
+
+    if channels == 2:
+        left = samples[0::2]
+        right = samples[1::2]
+    else:
+        left = samples
+        right = samples.copy()
+
+    return StereoAudio(left=left, right=right, sample_rate=sample_rate)
+
+
 def load_raw(
     path: str,
     sample_rate: int,
@@ -43,19 +71,7 @@ def load_raw(
     with open(path, "rb") as f:
         raw = f.read()
 
-    fmt = "<" if byte_order == "little" else ">"
-    n_samples = len(raw) // 2
-    samples = np.array(struct.unpack(f"{fmt}{n_samples}h", raw), dtype=np.float64)
-    samples /= 32768.0
-
-    if channels == 2:
-        left = samples[0::2]
-        right = samples[1::2]
-    else:
-        left = samples
-        right = samples.copy()
-
-    return StereoAudio(left=left, right=right, sample_rate=sample_rate)
+    return audio_from_bytes(raw, sample_rate, channels, byte_order)
 
 
 def load_wav(path: str) -> StereoAudio:
