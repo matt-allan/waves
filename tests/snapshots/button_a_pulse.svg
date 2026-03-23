@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="446" viewBox="0 0 960 446" shape-rendering="crispEdges">
+<rect width="960" height="446" fill="#f4f1eb"/>
+<line x1="12" y1="4" x2="948" y2="4" stroke="#1a1a1a" stroke-width="1"/>
+<text x="12" y="24" fill="#1a1a1a" font-size="12" font-weight="700" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">[PU1]  44100Hz  186ms  8191smp</text>
+<line x1="12" y1="32" x2="948" y2="32" stroke="#1a1a1a" stroke-width="1"/>
+<text x="12" y="47" fill="#888880" font-size="9" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">WAVEFORM</text>
+<text x="948" y="47" fill="#888880" font-size="9" font-weight="400" text-anchor="end" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">130.9Hz  2cyc</text>
+<rect x="12" y="52" width="936" height="100" fill="none" stroke="#ccc8be"/>
+<line x1="12" y1="102" x2="948" y2="102" stroke="#ccc8be" stroke-width="1" stroke-dasharray="2,4"/>
+<polyline points="12,103 19,103 19,103 27,103 27,103 34,103 34,103 41,103 41,103 49,103 49,103 56,103 56,103 64,103 64,103 71,103 71,103 78,103 78,103 86,103 86,103 93,103 93,103 100,103 100,103 108,103 108,103 115,103 115,103 123,103 123,103 130,103 130,103 137,103 137,103 145,103 145,103 152,103 152,103 159,103 159,103 167,103 167,103 174,103 174,103 182,103 182,103 189,103 189,103 196,103 196,103 204,103 204,103 211,103 211,103 218,103 218,103 226,103 226,103 233,103 233,103 240,103 240,103 248,103 248,103 255,103 255,103 263,103 263,103 270,103 270,103 277,103 277,103 285,103 285,103 292,103 292,103 299,103 299,103 307,103 307,103 314,103 314,103 322,103 322,105 329,105 329,105 336,105 336,105 344,105 344,105 351,105 351,105 358,105 358,105 366,105 366,105 373,105 373,105 381,105 381,103 388,103 388,103 395,103 395,103 403,103 403,103 410,103 410,103 417,103 417,103 425,103 425,103 432,103 432,103 439,103 439,103 447,103 447,103 454,103 454,103 462,103 462,103 469,103 469,103 476,103 476,103 484,103 484,103 491,103 491,103 498,103 498,103 506,103 506,103 513,103 513,103 521,103 521,103 528,103 528,103 535,103 535,103 543,103 543,103 550,103 550,103 557,103 557,103 565,103 565,103 572,103 572,103 579,103 579,103 587,103 587,103 594,103 594,103 602,103 602,103 609,103 609,103 616,103 616,103 624,103 624,103 631,103 631,103 638,103 638,103 646,103 646,103 653,103 653,103 661,103 661,103 668,103 668,103 675,103 675,103 683,103 683,103 690,103 690,103 697,103 697,103 705,103 705,103 712,103 712,103 720,103 720,103 727,103 727,103 734,103 734,103 742,103 742,103 749,103 749,103 756,103 756,103 764,103 764,103 771,103 771,103 778,103 778,103 786,103 786,103 793,103 793,105 801,105 801,105 808,105 808,105 815,105 815,105 823,105 823,105 830,105 830,105 837,105 837,105 845,105 845,105 852,105 852,103 860,103 860,103 867,103 867,103 874,103 874,103 882,103 882,103 889,103 889,103 896,103 896,103 904,103 904,103 911,103 911,103 919,103 919,103 926,103 926,103 933,103 933,103 941,103 941,103 948,103 948,103" fill="none" stroke="#1a1a1a" stroke-width="1"/>
+<text x="12" y="171" fill="#888880" font-size="9" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">ENVELOPE</text>
+<text x="948" y="171" fill="#888880" font-size="9" font-weight="400" text-anchor="end" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">5ms win  37pts</text>
+<rect x="12" y="176" width="936" height="98" fill="none" stroke="#ccc8be"/>
+<rect x="12" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="37" y="209" width="25" height="65" fill="#1a1a1a"/>
+<rect x="63" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="88" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="113" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="138" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="164" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="189" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="214" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="240" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="265" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="290" y="199" width="25" height="75" fill="#1a1a1a"/>
+<rect x="316" y="221" width="25" height="53" fill="#1a1a1a"/>
+<rect x="341" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="366" y="211" width="25" height="63" fill="#1a1a1a"/>
+<rect x="391" y="206" width="25" height="68" fill="#1a1a1a"/>
+<rect x="417" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="442" y="226" width="25" height="48" fill="#1a1a1a"/>
+<rect x="467" y="194" width="25" height="80" fill="#1a1a1a"/>
+<rect x="493" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="518" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="543" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="569" y="191" width="25" height="83" fill="#1a1a1a"/>
+<rect x="594" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="619" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="644" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="670" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="695" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="720" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="746" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="771" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="796" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="822" y="231" width="25" height="43" fill="#1a1a1a"/>
+<rect x="847" y="176" width="25" height="98" fill="#1a1a1a"/>
+<rect x="872" y="181" width="25" height="93" fill="#1a1a1a"/>
+<rect x="897" y="219" width="25" height="55" fill="#1a1a1a"/>
+<rect x="923" y="176" width="25" height="98" fill="#1a1a1a"/>
+<line x1="12" y1="274" x2="948" y2="274" stroke="#ccc8be" stroke-width="1"/>
+<line x1="12" y1="274" x2="12" y2="277" stroke="#888880" stroke-width="1"/>
+<text x="12" y="287" fill="#888880" font-size="8" font-weight="400" text-anchor="middle" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">0</text>
+<line x1="246.0" y1="274" x2="246.0" y2="277" stroke="#888880" stroke-width="1"/>
+<text x="246.0" y="287" fill="#888880" font-size="8" font-weight="400" text-anchor="middle" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">46</text>
+<line x1="480.0" y1="274" x2="480.0" y2="277" stroke="#888880" stroke-width="1"/>
+<text x="480.0" y="287" fill="#888880" font-size="8" font-weight="400" text-anchor="middle" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">93</text>
+<line x1="714.0" y1="274" x2="714.0" y2="277" stroke="#888880" stroke-width="1"/>
+<text x="714.0" y="287" fill="#888880" font-size="8" font-weight="400" text-anchor="middle" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">139</text>
+<line x1="948.0" y1="274" x2="948.0" y2="277" stroke="#888880" stroke-width="1"/>
+<text x="948.0" y="287" fill="#888880" font-size="8" font-weight="400" text-anchor="middle" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">186</text>
+<text x="14" y="186" fill="#888880" font-size="8" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">0.039</text>
+<line x1="12" y1="294" x2="948" y2="294" stroke="#ccc8be" stroke-width="1"/>
+<text x="12" y="307" fill="#888880" font-size="9" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">TIMBRE</text>
+<rect x="68" y="297" width="30" height="14" fill="#1a1a1a" stroke="none"/>
+<text x="72" y="307" fill="#f4f1eb" font-size="9" font-weight="700" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">PU1</text>
+<text x="24" y="324" fill="#1a1a1a" font-size="11" font-weight="700" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">DUTY  12.5%</text>
+<text x="24" y="340" fill="#1a1a1a" font-size="11" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">FREQ  130.9 Hz</text>
+<polyline points="480,352 480,312 491,312 491,352 570,352 570,352 570,312 581,312 581,352 660,352" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+<line x1="12" y1="378" x2="948" y2="378" stroke="#ccc8be" stroke-width="1"/>
+<text x="12" y="390" fill="#888880" font-size="9" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">PAN</text>
+<rect x="44.0" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="68.2" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="92.4" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="116.6" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="140.9" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="165.1" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="189.3" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="213.5" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="237.7" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="261.9" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="286.2" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="310.4" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="334.6" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="358.8" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="383.0" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="407.2" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="431.5" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="455.7" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="479.9" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="504.1" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="528.3" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="552.5" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="576.8" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="601.0" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="625.2" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="649.4" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="673.6" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="697.8" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="722.1" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="746.3" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="770.5" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="794.7" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="818.9" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="843.1" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="867.4" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="891.6" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<rect x="915.8" y="382" width="23.7" height="16" fill="#1a1a1a"/>
+<line x1="12" y1="418" x2="948" y2="418" stroke="#1a1a1a" stroke-width="1"/>
+<text x="12" y="434" fill="#1a1a1a" font-size="9" font-weight="400" text-anchor="start" font-family="'Courier New', Courier, monospace" dominant-baseline="auto">PkL=0.089 RMSL=0.030 DCL=-0.024  PkR=0.089 RMSR=0.030 DCR=-0.024</text>
+</svg>

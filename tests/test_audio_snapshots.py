@@ -30,4 +30,4 @@ def test_button_a_pulse(emu: Emulator, snapshot) -> None:
     audio = audio_from_bytes(audio_bytes)
     snap = analyze(audio, SnapshotConfig(channel="PU1"))
 
-    snapshot.assert_match(snapshot_to_dict(snap), "button_a_pulse.json")
+    snapshot.assert_match(snapshot_to_dict(snap), "button_a_pulse.json", snap=snap)

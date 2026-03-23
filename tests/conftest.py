@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pytest
+
+from pcmsnap import Snapshot, render_svg
 
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 
@@ -55,11 +57,19 @@ class SnapshotAssertion:
         self._test_name = test_name
         self._update = update
 
-    def assert_match(self, data: Any, name: str | None = None) -> None:
+    def assert_match(
+        self,
+        data: Any,
+        name: str | None = None,
+        snap: Optional[Snapshot] = None,
+    ) -> None:
         """Assert *data* matches the stored snapshot.
 
         *name* is the snapshot filename (e.g. ``"audio_button_a.json"``).
         If omitted, it is derived from the test function name.
+
+        If *snap* is provided, an SVG rendering is written alongside the
+        JSON file for human review.
         """
         if name is None:
             name = f"{self._test_name}.json"
@@ -76,6 +86,9 @@ class SnapshotAssertion:
         if self._update or not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, indent=2) + "\n")
+            if snap is not None:
+                svg_path = path.with_suffix(".svg")
+                svg_path.write_text(render_svg(snap))
             return
 
         stored = json.loads(path.read_text())
