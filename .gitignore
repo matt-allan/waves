@@ -4,3 +4,4 @@ tools/
 vendor/cppp/cppp
 vendor/cppp/*.o
 __pycache__/
+.venv/
