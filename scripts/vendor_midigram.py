@@ -12,7 +12,7 @@ import tempfile
 import urllib.request
 
 # Bump this to update the vendored midigram version.
-MIDIGRAM_REV = "09e6db7b73d174d028ae9eb677633df101c6c9e8"
+MIDIGRAM_REV = "594ec9010bd0f8b1c2b96e8182e57f83ffef8b42"
 
 TARBALL_URL = (
     f"https://github.com/matt-allan/midigram/archive/{MIDIGRAM_REV}.tar.gz"

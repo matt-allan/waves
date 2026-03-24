@@ -151,9 +151,11 @@ extern "C"
 		midi_parse_state parse_state;
 
 		/**
-		 * The last channel (voice or mode / non-system) status parsed.
+		 * The status byte of the message currently being parsed.
+		 * Persists after channel messages complete to enable running
+		 * status; cleared after system common messages complete.
 		 */
-		uint8_t running_status;
+		uint8_t status;
 
 		/**
 		 * Caller-provided buffer for SysEx data bytes (excluding
