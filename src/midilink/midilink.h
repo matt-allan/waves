@@ -54,7 +54,6 @@ enum {
  */
 struct midilink {
 	struct midi_context midi; /* midigram parser state */
-	midi_msg msg;             /* in-progress message (survives RT interrupts) */
 };
 
 /* ---------------------------------------------------------------------- */

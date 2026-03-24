@@ -118,25 +118,10 @@ void midilink_init(struct midilink *ml)
 uint8_t midilink_feed(struct midilink *ml, uint8_t byte,
                       uint8_t *out, uint8_t out_cap)
 {
-	/*
-	 * midigram shares the msg struct across calls.  Real-time messages
-	 * (clock, start, etc.) can arrive mid-message and overwrite
-	 * msg.status while data bytes are still pending.  We keep the msg
-	 * in our context so data bytes accumulate correctly, and save the
-	 * in-progress status so we can restore it after an RT interruption.
-	 */
-	uint8_t saved_status = ml->msg.status;
+	midi_msg msg;
 
-	if (!midi_parse(&ml->midi, byte, &ml->msg))
+	if (!midi_parse(&ml->midi, byte, &msg))
 		return 0;
 
-	uint8_t type = midi_status_type(ml->msg.status);
-
-	/* Real-time messages: ignore and restore the in-progress status. */
-	if (type == MIDI_STATUS_SYSTEM && ml->msg.status >= 0xF8) {
-		ml->msg.status = saved_status;
-		return 0;
-	}
-
-	return translate(&ml->msg, out, out_cap);
+	return translate(&msg, out, out_cap);
 }

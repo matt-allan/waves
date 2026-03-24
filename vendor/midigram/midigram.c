@@ -94,7 +94,7 @@ bool midi_parse(struct midi_context *ctx, const uint8_t next_byte,
 		msg->status = MIDI_STATUS_SYS_EOX;
 		msg->data_len = -1;
 		ctx->parse_state = MIDI_PARSE_STATUS;
-		ctx->running_status = 0;
+		ctx->status = 0;
 		return true;
 	}
 
@@ -120,34 +120,30 @@ bool midi_parse(struct midi_context *ctx, const uint8_t next_byte,
 		case -1:
 			ctx->parse_state = MIDI_PARSE_SYSEX;
 			ctx->sysex_len = 0;
+			ctx->status = 0;
 			return false;
 		case 1:
 		case 2:
 			ctx->parse_state = MIDI_PARSE_DATA_0;
-			if (is_sys_byte(next_byte))
-			{
-				ctx->running_status = 0;
-			}
+			ctx->status = next_byte;
 			return false;
 		default:
 			// It must be a non-RT sys. message if it has no data
 			// bytes
 			ctx->parse_state = MIDI_PARSE_STATUS;
-			// running status is stopped by any other status except
-			// RT
-			ctx->running_status = 0;
+			ctx->status = 0;
 			return true;
 		}
 	}
 
 	// if we were waiting for a status byte but we have a running status,
 	// set the status byte and immediately move to parsing data bytes
-	if (ctx->parse_state == MIDI_PARSE_STATUS && ctx->running_status)
+	if (ctx->parse_state == MIDI_PARSE_STATUS && ctx->status)
 	{
 		// update the msg and the parse state
-		int8_t len = data_bytes_len(ctx->running_status);
+		int8_t len = data_bytes_len(ctx->status);
 
-		msg->status = ctx->running_status;
+		msg->status = ctx->status;
 		msg->data_len = len;
 		ctx->data_len = len;
 
@@ -157,6 +153,7 @@ bool midi_parse(struct midi_context *ctx, const uint8_t next_byte,
 	switch (ctx->parse_state)
 	{
 	case MIDI_PARSE_DATA_0:
+		msg->status = ctx->status;
 		msg->data[0] = next_byte;
 		msg->data_len = ctx->data_len;
 
@@ -164,9 +161,9 @@ bool midi_parse(struct midi_context *ctx, const uint8_t next_byte,
 		{
 			ctx->parse_state = MIDI_PARSE_STATUS;
 
-			if (msg->status < MIDI_STATUS_SYSTEM)
+			if (ctx->status >= MIDI_STATUS_SYSTEM)
 			{
-				ctx->running_status = msg->status;
+				ctx->status = 0;
 			}
 
 			return true;
@@ -177,13 +174,14 @@ bool midi_parse(struct midi_context *ctx, const uint8_t next_byte,
 			return false;
 		}
 	case MIDI_PARSE_DATA_1:
+		msg->status = ctx->status;
 		msg->data[1] = next_byte;
 
 		ctx->parse_state = MIDI_PARSE_STATUS;
 
-		if (msg->status < MIDI_STATUS_SYSTEM)
+		if (ctx->status >= MIDI_STATUS_SYSTEM)
 		{
-			ctx->running_status = msg->status;
+			ctx->status = 0;
 		}
 
 		return true;
