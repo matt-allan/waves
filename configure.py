@@ -183,5 +183,48 @@ n.rule(
 n.build(sameboy_so, "shlib", [sameboy_lib])
 n.newline()
 
+# --- Midilink shared library (for host-side tests) ---
+
+midilink_cflags = [
+    "-std=c99",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-fPIC",
+    "-O2",
+    "-Isrc/midilink",
+    "-Ivendor/midigram",
+]
+n.variable("midilink_cflags", " ".join(midilink_cflags))
+n.newline()
+
+n.rule(
+    "cc_midilink",
+    command="$host_cc $midilink_cflags -MMD -MF $out.d -c -o $out $in",
+    depfile="$out.d",
+    description="CC $out",
+)
+n.newline()
+
+midilink_sources = [
+    "src/midilink/midilink.c",
+    "vendor/midigram/midigram.c",
+]
+midilink_objects = []
+for src in midilink_sources:
+    obj = os.path.join("$builddir", "midilink", os.path.basename(src) + ".o")
+    n.build(obj, "cc_midilink", src)
+    midilink_objects.append(obj)
+n.newline()
+
+midilink_so = os.path.join("$builddir", "lib", "libmidilink" + shlib_ext)
+n.rule(
+    "shlib_midilink",
+    command="$host_cc -shared -o $out $in",
+    description="SHLIB $out",
+)
+n.build(midilink_so, "shlib_midilink", midilink_objects)
+n.newline()
+
 n.close()
 print("wrote %s." % BUILD_FILENAME)
