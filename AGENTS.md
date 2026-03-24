@@ -2,16 +2,10 @@
 
 ## Getting Started
 
-Initialize submodules:
-
-```sh
-git submodule update --init --recursive
-```
-
 Install host build dependencies (Ubuntu/Debian):
 
 ```sh
-sudo apt install sdcc gcc clang cmake libpng-dev ninja-build
+sudo apt install sdcc gcc cmake libpng-dev ninja-build
 ```
 
 Install Python dependencies:
@@ -20,7 +14,13 @@ Install Python dependencies:
 uv sync
 ```
 
-Install the toolchain (GBDK and cppp) into `tools/`:
+Vendor the SameBoy emulator core (downloaded once, checked into the repo):
+
+```sh
+uv run python scripts/vendor_sameboy.py
+```
+
+Install the GBDK toolchain into `tools/`:
 
 ```sh
 uv run python scripts/install_tools.py

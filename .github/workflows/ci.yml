@@ -12,13 +12,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y sdcc gcc g++ clang cmake libpng-dev ninja-build
+          sudo apt-get install -y sdcc gcc g++ cmake libpng-dev ninja-build
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
