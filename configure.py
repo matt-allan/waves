@@ -115,7 +115,7 @@ with open(os.path.join(sameboy_root, "version.mk")) as f:
 with open(os.path.join(sameboy_root, "LICENSE")) as f:
     sameboy_copyright_year = re.search(r"(20[2-9]\d)", f.read()).group(1)
 
-n.variable("host_cc", "gcc")
+n.variable("host_cc", "cc")
 n.newline()
 
 # Compile SameBoy Core sources directly.
