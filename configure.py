@@ -3,8 +3,10 @@
 """Generate the build.ninja file for waves."""
 
 import argparse
+import glob
 import os
 import platform
+import re
 import sys
 
 from vendor.ninja import ninja_syntax
@@ -103,25 +105,59 @@ n.newline()
 
 # --- SameBoy ---
 
-sameboy_root = "vendor/SameBoy"
-sameboy_lib = os.path.join(sameboy_root, "build", "lib", "libsameboy.a")
+sameboy_root = "vendor/sameboy"
 
-n.variable("host_cc", "gcc")
+# Read version from vendored version.mk.
+with open(os.path.join(sameboy_root, "version.mk")) as f:
+    sameboy_version = re.search(r"VERSION\s*:=\s*(.+)", f.read()).group(1).strip()
+
+# Extract copyright year from the LICENSE file.
+with open(os.path.join(sameboy_root, "LICENSE")) as f:
+    sameboy_copyright_year = re.search(r"(20[2-9]\d)", f.read()).group(1)
+
+n.variable("host_cc", "cc")
 n.newline()
 
-# SameBoy is built by its own Makefile; treat it as an external dependency.
-tools_dir = os.path.abspath("tools")
+# Compile SameBoy Core sources directly.
+sameboy_cflags = [
+    "-std=gnu11",
+    "-D_GNU_SOURCE",
+    "-DGB_INTERNAL",
+    f'-DGB_VERSION=\'"{sameboy_version}"\'',
+    f'-DGB_COPYRIGHT_YEAR=\'"{sameboy_copyright_year}"\'',
+    "-D_USE_MATH_DEFINES",
+    f"-I{sameboy_root}",
+    "-fPIC",
+    "-O3",
+    "-ffast-math",
+    "-DNDEBUG",
+    "-Wall",
+    "-Wno-multichar",
+    "-Wno-unknown-warning-option",
+]
+
+n.variable("sameboy_cflags", " ".join(sameboy_cflags))
+n.newline()
+
 n.rule(
-    "sameboy",
-    command='PATH="'
-    + tools_dir
-    + ':$$PATH" make -C '
-    + sameboy_root
-    + " headers lib CONF=release EXTRA_CFLAGS=-fPIC",
-    description="MAKE SameBoy",
-    generator=True,
+    "cc_sameboy",
+    command="$host_cc $sameboy_cflags -MMD -MF $out.d -c -o $out $in",
+    depfile="$out.d",
+    description="CC $out",
 )
-n.build(sameboy_lib, "sameboy")
+n.newline()
+
+core_sources = sorted(glob.glob(os.path.join(sameboy_root, "Core", "*.c")))
+core_objects = []
+for src in core_sources:
+    obj = os.path.join("$builddir", "sameboy", os.path.basename(src) + ".o")
+    n.build(obj, "cc_sameboy", src)
+    core_objects.append(obj)
+n.newline()
+
+sameboy_lib = os.path.join("$builddir", "lib", "libsameboy.a")
+n.rule("ar", command="rm -f $out && ar crs $out $in", description="AR $out")
+n.build(sameboy_lib, "ar", core_objects)
 n.newline()
 
 # Shared library for Python ctypes bindings.
