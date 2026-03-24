@@ -5,7 +5,7 @@
 Install host build dependencies (Ubuntu/Debian):
 
 ```sh
-sudo apt install sdcc gcc cmake libpng-dev ninja-build
+sudo apt install gcc ninja-build
 ```
 
 Install Python dependencies:
